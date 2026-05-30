@@ -1,0 +1,15 @@
+# azd
+.azure/
+
+# Local deploy driver state
+infra/aks/.deploy/
+
+# Bicep build artifacts
+*.bicep.json
+infra/**/main.json
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/*.log

@@ -1,0 +1,43 @@
+# azd manifest — drives the AKS Automatic Bicep template
+# Run with:  azd up    (or:  azd provision)
+name: aks-automatic
+metadata:
+  template: aks-automatic@1.0.0
+infra:
+  provider: bicep
+  path: infra/aks
+  module: main
+hooks:
+  preprovision:
+    windows:
+      shell: pwsh
+      run: |
+        Write-Host "Running preflight checks via deploy.ps1..."
+        & "$PSScriptRoot\infra\aks\deploy.ps1" -Stage Preflight -Mode $env:AKS_MODE -Location $env:AZURE_LOCATION
+      continueOnError: false
+    posix:
+      shell: sh
+      run: |
+        echo "Running preflight checks via deploy.sh..."
+        bash ./infra/aks/deploy.sh --stage Preflight --mode "${AKS_MODE:-automaticManaged}" --location "$AZURE_LOCATION"
+      continueOnError: false
+  postprovision:
+    windows:
+      shell: pwsh
+      run: |
+        if ($env:AKS_MODE -eq 'automaticPrivate') {
+          Write-Host "Private cluster: skipping get-credentials/kubectl (run from a jumpbox in the VNet)."
+        } else {
+          Write-Host "Fetching credentials..."
+          az aks get-credentials --resource-group $env:RESOURCE_GROUP_NAME --name $env:CLUSTER_NAME --overwrite-existing
+          kubectl get nodes
+        }
+    posix:
+      shell: sh
+      run: |
+        if [ "${AKS_MODE:-}" = "automaticPrivate" ]; then
+          echo "Private cluster: skipping get-credentials/kubectl (run from a jumpbox in the VNet)."
+        else
+          az aks get-credentials --resource-group "$RESOURCE_GROUP_NAME" --name "$CLUSTER_NAME" --overwrite-existing
+          kubectl get nodes
+        fi

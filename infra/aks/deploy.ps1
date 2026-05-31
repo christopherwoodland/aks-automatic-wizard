@@ -334,7 +334,7 @@ function Invoke-Smoke {
     if ($outputs.PSObject.Properties.Name -contains 'oidcIssuerUrl' -and $outputs.oidcIssuerUrl.value) {
         Write-Host ""
         Write-Host "OIDC issuer URL : $($outputs.oidcIssuerUrl.value)"
-        Write-Host "  (use for Workload Identity federated credentials — see README)"
+        Write-Host "  (use for Workload Identity federated credentials -- see README)"
     }
     Write-Ok "Cluster reachable"
 }

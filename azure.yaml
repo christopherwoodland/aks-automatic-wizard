@@ -13,13 +13,15 @@ hooks:
       shell: pwsh
       run: |
         Write-Host "Running preflight checks via deploy.ps1..."
-        & "$PSScriptRoot\infra\aks\deploy.ps1" -Stage Preflight -Mode $env:AKS_MODE -Location $env:AZURE_LOCATION
+        $mode = if ($env:AKS_MODE) { $env:AKS_MODE } else { 'automaticManaged' }
+        $loc  = if ($env:AZURE_LOCATION) { $env:AZURE_LOCATION } else { 'westus3' }
+        & "$PSScriptRoot\infra\aks\deploy.ps1" -Stage Preflight -Mode $mode -Location $loc
       continueOnError: false
     posix:
       shell: sh
       run: |
         echo "Running preflight checks via deploy.sh..."
-        bash ./infra/aks/deploy.sh --stage Preflight --mode "${AKS_MODE:-automaticManaged}" --location "$AZURE_LOCATION"
+        bash ./infra/aks/deploy.sh --stage Preflight --mode "${AKS_MODE:-automaticManaged}" --location "${AZURE_LOCATION:-westus3}"
       continueOnError: false
   postprovision:
     windows:

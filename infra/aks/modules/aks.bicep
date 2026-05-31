@@ -354,7 +354,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-03-02-preview' = {
     dnsPrefix: dnsPrefix
     fqdnSubdomain: empty(fqdnSubdomain) ? null : fqdnSubdomain
     kubernetesVersion: empty(kubernetesVersion) ? null : kubernetesVersion
-    nodeResourceGroup: nodeResourceGroup
+    nodeResourceGroup: empty(nodeResourceGroup) ? null : nodeResourceGroup
     nodeResourceGroupProfile: {
       restrictionLevel: nodeResourceGroupRestrictionLevel
     }
@@ -365,7 +365,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-03-02-preview' = {
     disableRunCommand: disableRunCommand
     #disable-next-line BCP037
     hostedSystemProfile: enableHostedSystem ? { enabled: true } : null
-    agentPoolProfiles: [ systemPool ]
+    // When hostedSystemProfile.enabled=true AKS provisions/manages the system pool itself;
+    // declaring our own system-mode pool would be rejected by the RP.
+    agentPoolProfiles: enableHostedSystem ? [] : [ systemPool ]
     identityProfile: {
       kubeletidentity: {
         resourceId: kubeletIdentityId

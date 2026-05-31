@@ -340,7 +340,9 @@ module acrMod 'modules/acr.bicep' = if (acrMode == 'new') {
   }
 }
 
-var acrIdsForKubelet = acrMode == 'existing' ? existingAcrIds : (acrMode == 'new' ? [ acrMod!.outputs.acrId ] : [])
+// Guard: when acrMode == 'existing', existingAcrIds must be a non-empty list of full ACR resource IDs.
+var _validateAcrExisting = (acrMode == 'existing' && length(existingAcrIds) == 0) ? fail('acrMode="existing" requires at least one entry in existingAcrIds (full /subscriptions/.../Microsoft.ContainerRegistry/registries/<name> resource ID).') : true
+var acrIdsForKubelet = _validateAcrExisting && acrMode == 'existing' ? existingAcrIds : (acrMode == 'new' ? [ acrMod!.outputs.acrId ] : [])
 
 // ============================================================================
 //  Networking (private mode only, and only if BYO VNet not supplied)
@@ -403,7 +405,8 @@ var pdnsZoneNameEffective = byoPdns ? last(split(byoPrivateDnsZoneId, '/')) : ef
 module raSubnet 'modules/roleAssignmentSubnet.bicep' = if (isPrivate) {
   name: 'raSubnet'
   scope: resourceGroup(vnetSubId, vnetRgName)
-  dependsOn: [ networkMod ]
+  // Only depend on networkMod when we created the VNet ourselves; BYO subnet already exists.
+  dependsOn: empty(byoVnetSubnetId) ? [ networkMod ] : []
   params: {
     vnetName: vnetNameEffective
     subnetName: subnetNameEffective
@@ -416,7 +419,8 @@ module raSubnet 'modules/roleAssignmentSubnet.bicep' = if (isPrivate) {
 module raPrivateDns 'modules/roleAssignmentPrivateDns.bicep' = if (isPrivate) {
   name: 'raPrivateDns'
   scope: resourceGroup(pdnsSubId, pdnsRgName)
-  dependsOn: [ pdnsMod ]
+  // Only depend on pdnsMod when we created the zone ourselves; BYO zone already exists.
+  dependsOn: empty(byoPrivateDnsZoneId) ? [ pdnsMod ] : []
   params: {
     zoneName: pdnsZoneNameEffective
     principalId: identityMod.outputs.controlPlaneIdentityPrincipalId

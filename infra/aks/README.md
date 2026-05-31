@@ -16,29 +16,56 @@ staged PowerShell/Bash driver.
 ## Layout
 
 ```
-infra/aks/
-├── main.bicep                     # subscription-scope orchestrator
-├── main.bicepparam                # all parameters (override anything you want)
-├── deploy.ps1                     # progressive driver (Windows / PS Core)
-├── deploy.sh                      # progressive driver (Linux/macOS)
-└── modules/
-    ├── identity.bicep             # control-plane + kubelet UAMI
-    ├── network.bicep              # VNet, AKS subnet, PE subnet, NSG
-    ├── privateDns.bicep           # privatelink.<region>.azmk8s.io + VNet link
-    ├── logAnalytics.bicep         # Container Insights workspace
-    ├── monitoring.bicep           # Azure Monitor workspace + optional Grafana
-    ├── acr.bicep                  # optional new ACR
-    ├── roleAssignments.bicep      # all required RBAC (subnet, MI, DNS, ACR, DNS zones)
-    ├── roleAssignmentAcr.bicep
-    ├── roleAssignmentDnsZone.bicep
-    ├── clusterAdmin.bicep         # Azure RBAC cluster admin/user roles
-    ├── aks.bicep                  # the AKS Automatic cluster itself
-    └── maintenance.bicep          # optional planned maintenance windows
+.
+├── azure.yaml                     # azd manifest — points azd at infra/aks
+├── .github/workflows/lint.yml     # bicep build/lint + PSScriptAnalyzer + shellcheck
+└── infra/aks/
+    ├── main.bicep                     # subscription-scope orchestrator
+    ├── main.bicepparam                # all parameters (override anything you want)
+    ├── deploy.ps1                     # progressive driver (Windows / PS Core)
+    ├── deploy.sh                      # progressive driver (Linux/macOS)
+    └── modules/
+        ├── identity.bicep             # control-plane + kubelet UAMI
+        ├── network.bicep              # VNet, AKS subnet, PE subnet, NSG
+        ├── privateDns.bicep           # privatelink.<region>.azmk8s.io + VNet link
+        ├── logAnalytics.bicep         # Container Insights workspace
+        ├── monitoring.bicep           # Azure Monitor workspace + optional Grafana
+        ├── acr.bicep                  # optional new ACR
+        ├── roleAssignments.bicep      # kubelet MIO + ACR pull + app-routing DNS
+        ├── roleAssignmentAcr.bicep
+        ├── roleAssignmentDnsZone.bicep
+        ├── roleAssignmentSubnet.bicep      # cross-sub safe Network Contributor on subnet
+        ├── roleAssignmentPrivateDns.bicep  # cross-sub safe PDNS Zone Contributor
+        ├── clusterAdmin.bicep         # Azure RBAC cluster admin/user roles
+        ├── aks.bicep                  # the AKS Automatic cluster itself
+        └── maintenance.bicep          # optional planned maintenance windows
 ```
 
 ## Quick start
 
-### Fully automated (auto-named, managed-VNet public cluster)
+You can drive the template three ways — pick whichever fits your workflow.
+
+### Option A — `azd up` (Azure Developer CLI)
+
+The repo root [azure.yaml](../../azure.yaml) wires `azd` to `infra/aks/main.bicep`.
+The `bicepparam` reads `AZURE_ENV_NAME` / `AZURE_LOCATION` / `AKS_MODE` from
+the environment, so `azd env set` flows through cleanly.
+
+```powershell
+cd ..\..      # repo root
+azd auth login
+azd env new aks-dev
+azd env set AZURE_LOCATION westus3
+azd env set AKS_MODE automaticManaged   # or automaticPrivate
+azd up
+```
+
+The `preprovision` hook runs the same `deploy.ps1 -Stage Preflight` checks
+(prereq install, login, RBAC, region, providers, feature flag). The
+`postprovision` hook fetches credentials and runs `kubectl get nodes`
+(skipped automatically for `automaticPrivate`).
+
+### Option B — driver script (full control over staging)
 
 ```powershell
 cd infra\aks
@@ -48,6 +75,15 @@ cd infra\aks
 ```bash
 cd infra/aks
 ./deploy.sh -s <sub-id> -l westus3 --auto-name
+```
+
+### Option C — raw `az deployment` (CI-friendly)
+
+```bash
+az deployment sub create \
+  --location westus3 \
+  --template-file infra/aks/main.bicep \
+  --parameters infra/aks/main.bicepparam
 ```
 
 ### Interactive (confirm every name)
@@ -70,10 +106,10 @@ The driver runs four stages — each independently re-runnable:
 
 | Stage | What it does |
 |---|---|
-| `Preflight` | az CLI version, `aks-preview`, login, provider registrations, `AKS-AutomaticHostedSystemProfilePreview` feature |
+| `Preflight` | PowerShell version, **auto-installs** Azure CLI (winget/apt/brew/dnf), Bicep, `aks-preview`, kubectl; `az login` if needed; caller RBAC sanity (Owner/Contributor/UAA); provider registrations; AKS region availability; `AKS-AutomaticHostedSystemProfilePreview` feature |
 | `Plan` | `az deployment sub what-if` (skip with `-SkipWhatIf`) |
 | `Deploy` | Submits `main.bicep` at subscription scope; prints operation failures on error |
-| `Smoke` | `az aks get-credentials` + `kubectl get nodes` |
+| `Smoke` | Loads `outputs.json`, runs `az aks get-credentials` + `kubectl get nodes` (works standalone after a prior Deploy) |
 
 Run a single stage:
 
@@ -130,14 +166,22 @@ Bicep parameter:
 
 ## RBAC included
 
-Created automatically and idempotently:
+Created automatically and idempotently — **cross-subscription safe**: the VNet,
+private DNS zone, and ACRs can live in completely different subscriptions from
+the AKS cluster. Each role assignment is deployed to its target resource's own
+sub + RG.
 
-- **Control-plane MI** ← `Network Contributor` on the AKS subnet (private mode)
-- **Control-plane MI** ← `Private DNS Zone Contributor` on the private DNS zone
+- **Control-plane MI** ← `Network Contributor` on the AKS subnet *(any sub/RG)*
+- **Control-plane MI** ← `Private DNS Zone Contributor` on the private DNS zone *(any sub/RG)*
 - **Control-plane MI** ← `Managed Identity Operator` on the kubelet MI
-- **Control-plane MI** ← `DNS Zone Contributor` on each app-routing public DNS zone
-- **Kubelet MI** ← `AcrPull` on each ACR (new or existing, cross-RG/sub safe)
+- **Control-plane MI** ← `DNS Zone Contributor` on each app-routing public DNS zone *(any sub/RG)*
+- **Kubelet MI** ← `AcrPull` on each ACR (new or existing, **cross-sub/RG safe**)
 - **Admin group** ← `Azure Kubernetes Service RBAC Cluster Admin` + `Azure Kubernetes Service Cluster User Role` on the cluster
+
+> The deploying principal needs `Microsoft.Authorization/roleAssignments/write`
+> (Owner or User Access Administrator) on the target RGs in any subscription
+> referenced via `byoVnetSubnetId`, `byoPrivateDnsZoneId`, `existingAcrIds`,
+> or `appRoutingDnsZoneIds`.
 
 ## Outputs
 

@@ -13,6 +13,19 @@ param vnetLinkName string
 @description('Resource tags.')
 param tags object = {}
 
+// Force a fresh GET of the VNet at link-time. This avoids a known eventual-
+// consistency race where Microsoft.Network reports the VNet PUT as Succeeded
+// before Microsoft.Network/privateDnsZones can resolve it cross-RP, producing
+// "Virtual network resource not found" on the VNet link create.
+var vnetSegs = split(vnetId, '/')
+var vnetRgName = vnetSegs[4]
+var vnetName = vnetSegs[8]
+
+resource existingVnet 'Microsoft.Network/virtualNetworks@2024-01-01' existing = {
+  name: vnetName
+  scope: resourceGroup(vnetRgName)
+}
+
 resource zone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   name: privateDnsZoneName
   location: 'global'
@@ -25,7 +38,7 @@ resource link 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01'
   location: 'global'
   properties: {
     registrationEnabled: false
-    virtualNetwork: { id: vnetId }
+    virtualNetwork: { id: existingVnet.id }
   }
 }
 

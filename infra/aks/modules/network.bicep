@@ -26,6 +26,12 @@ param privateEndpointSubnetName string = 'snet-pe'
 @description('Private-endpoint subnet CIDR.')
 param privateEndpointSubnetPrefix string = '10.240.4.0/24'
 
+@description('API server VNet integration subnet name (delegated to Microsoft.ContainerService/managedClusters).')
+param apiServerSubnetName string = 'snet-apiserver'
+
+@description('API server subnet CIDR. Must be at least /28.')
+param apiServerSubnetPrefix string = '10.240.5.0/28'
+
 @description('NSG name attached to the AKS subnet.')
 param aksNsgName string
 
@@ -58,13 +64,26 @@ var peSubnet = {
   }
 }
 
+var apiServerSubnet = {
+  name: apiServerSubnetName
+  properties: {
+    addressPrefix: apiServerSubnetPrefix
+    delegations: [
+      {
+        name: 'aks-delegation'
+        properties: { serviceName: 'Microsoft.ContainerService/managedClusters' }
+      }
+    ]
+  }
+}
+
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
   name: vnetName
   location: location
   tags: tags
   properties: {
     addressSpace: { addressPrefixes: vnetAddressPrefixes }
-    subnets: createPrivateEndpointSubnet ? [ aksSubnet, peSubnet ] : [ aksSubnet ]
+    subnets: createPrivateEndpointSubnet ? [ aksSubnet, peSubnet, apiServerSubnet ] : [ aksSubnet, apiServerSubnet ]
   }
 }
 
@@ -72,3 +91,4 @@ output vnetId string = vnet.id
 output vnetName string = vnet.name
 output aksSubnetId string = '${vnet.id}/subnets/${aksSubnetName}'
 output privateEndpointSubnetId string = createPrivateEndpointSubnet ? '${vnet.id}/subnets/${privateEndpointSubnetName}' : ''
+output apiServerSubnetId string = '${vnet.id}/subnets/${apiServerSubnetName}'

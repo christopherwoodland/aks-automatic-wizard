@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AKS Optional/BYO Wizard</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --paper: #ffffff;
+      --ink: #1b2427;
+      --muted: #5c6a70;
+      --line: #d6dee0;
+      --accent: #005f73;
+      --accent2: #9b2226;
+      --ok: #166534;
+      --warn: #9a3412;
+      --err: #991b1b;
+      --shadow: 0 12px 28px rgba(25, 37, 41, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(0, 95, 115, 0.15), transparent 28%),
+        radial-gradient(circle at 90% 0%, rgba(155, 34, 38, 0.12), transparent 34%),
+        var(--bg);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .hero {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-left: 6px solid var(--accent);
+    }
+
+    h1 { margin: 0; font-size: 1.55rem; }
+    h2 { margin: 14px 0 10px; font-size: 1.08rem; }
+    h3 { margin: 10px 0 8px; font-size: 0.95rem; color: var(--muted); }
+
+    .sub { margin: 4px 0 0; color: var(--muted); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 0.79rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #c8d1d4;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      padding: 8px 9px;
+    }
+
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+      font-family: Consolas, "Lucida Console", monospace;
+      font-size: 0.85rem;
+    }
+
+    .checks { display: flex; flex-wrap: wrap; gap: 8px; }
+    .mt8 { margin-top: 8px; }
+    .check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px dashed #cbd5d9;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.78rem;
+      padding: 3px 9px;
+      white-space: nowrap;
+    }
+
+    .ok { color: var(--ok); border-color: #8fd8a8; background: #ebfbf1; }
+    .warn { color: var(--warn); border-color: #f0bc8d; background: #fff5eb; }
+    .err { color: var(--err); border-color: #f2aaaa; background: #fff0f0; }
+
+    .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .preset {
+      border: 1px solid #b8c6cb;
+      background: #f8fbfc;
+      color: #0f2a33;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 12px;
+      color: #fff;
+      background: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.alt { background: #334155; }
+    button.warn { background: var(--accent2); }
+
+    .hint { color: var(--muted); font-size: 0.84rem; margin-top: 6px; }
+
+    pre {
+      margin: 0;
+      border: 1px solid #d3d8db;
+      border-radius: 10px;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 280px;
+      overflow: auto;
+      font-family: Consolas, "Lucida Console", monospace;
+      font-size: 0.83rem;
+    }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stack { display: grid; gap: 8px; }
+
+    @media (max-width: 1020px) {
+      .container { grid-template-columns: 1fr; }
+      .split { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card hero">
+      <div>
+        <h1>AKS Optional / BYO Deployment Wizard</h1>
+        <p class="sub">Build deploy commands with optional resources and bring-your-own IDs where supported by this template.</p>
+      </div>
+      <span id="status" class="pill ok">Ready</span>
+    </section>
+
+    <section class="card">
+      <h2>Core</h2>
+      <div class="grid">
+        <div>
+          <label for="subId">Subscription ID</label>
+          <input id="subId" placeholder="6bf68138-..." />
+        </div>
+        <div>
+          <label for="location">Location</label>
+          <input id="location" value="swedencentral" />
+        </div>
+        <div>
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="automaticManaged">automaticManaged</option>
+            <option value="automaticPrivate" selected>automaticPrivate</option>
+          </select>
+        </div>
+        <div>
+          <label for="stage">Stage</label>
+          <select id="stage">
+            <option>All</option>
+            <option>Preflight</option>
+            <option>Plan</option>
+            <option selected>Deploy</option>
+            <option>Smoke</option>
+          </select>
+        </div>
+        <div>
+          <label for="workload">Workload Name</label>
+          <input id="workload" value="aks" />
+        </div>
+        <div>
+          <label for="envName">Environment Name</label>
+          <input id="envName" value="dev" />
+        </div>
+      </div>
+      <div class="checks mt8">
+        <label class="check"><input type="checkbox" id="autoName" /> AutoName</label>
+        <label class="check"><input type="checkbox" id="interactive" /> Interactive</label>
+        <label class="check"><input type="checkbox" id="resume" /> Resume</label>
+        <label class="check"><input type="checkbox" id="skipWhatIf" checked /> SkipWhatIf</label>
+      </div>
+
+      <h2>Presets</h2>
+      <div class="btns">
+        <button type="button" class="preset" id="btnPresetMin">1) Minimum Cost</button>
+        <button type="button" class="preset" id="btnPresetEnt">2) Private Enterprise</button>
+        <button type="button" class="preset" id="btnPresetByo">3) BYO Everything</button>
+      </div>
+      <p class="hint">Presets fill the form. You can still tweak any field after applying one.</p>
+
+      <h2>Optional Features</h2>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="enableLaw" checked /> Container Insights (LAW)</label>
+        <label class="check"><input type="checkbox" id="enableAmw" checked /> Azure Monitor Workspace</label>
+        <label class="check"><input type="checkbox" id="enableGrafana" /> Managed Grafana</label>
+      </div>
+
+      <h2>ACR</h2>
+      <div class="grid">
+        <div>
+          <label for="acrMode">ACR Mode</label>
+          <select id="acrMode">
+            <option value="none" selected>none</option>
+            <option value="new">new</option>
+            <option value="existing">existing</option>
+          </select>
+        </div>
+        <div>
+          <label for="acrName">New ACR Name (when mode=new)</label>
+          <input id="acrName" placeholder="acrmyteam" />
+        </div>
+        <div class="full">
+          <label for="existingAcrIds">Existing ACR IDs (one per line)</label>
+          <textarea id="existingAcrIds" placeholder="/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr1"></textarea>
+        </div>
+      </div>
+
+      <h2>Private Network (BYO supported)</h2>
+      <div class="split">
+        <div class="stack">
+          <h3>Spoke / AKS side</h3>
+          <div>
+            <label for="byoVnetSubnetId">BYO AKS Subnet ID</label>
+            <input id="byoVnetSubnetId" placeholder="/subscriptions/.../subnets/snet-aks" />
+          </div>
+          <div>
+            <label for="byoPodSubnetId">BYO Pod Subnet ID (optional)</label>
+            <input id="byoPodSubnetId" placeholder="/subscriptions/.../subnets/snet-pods" />
+          </div>
+          <div>
+            <label for="byoPrivateDnsZoneId">BYO Private DNS Zone ID</label>
+            <input id="byoPrivateDnsZoneId" placeholder="/subscriptions/.../privateDnsZones/privatelink.<region>.azmk8s.io" />
+          </div>
+        </div>
+        <div class="stack">
+          <h3>Hub / Access side</h3>
+          <div>
+            <label for="hubMode">Hub Connectivity Mode</label>
+            <select id="hubMode">
+              <option value="none">none</option>
+              <option value="peering" selected>peering</option>
+              <option value="privateEndpoint">privateEndpoint</option>
+              <option value="both">both</option>
+            </select>
+          </div>
+          <div>
+            <label for="hubVnetId">BYO Hub VNet ID</label>
+            <input id="hubVnetId" placeholder="/subscriptions/.../virtualNetworks/vnet-hub" />
+          </div>
+          <div>
+            <label for="byoHubBastionSubnetId">BYO Hub Bastion Subnet ID</label>
+            <input id="byoHubBastionSubnetId" placeholder="/subscriptions/.../subnets/AzureBastionSubnet" />
+          </div>
+          <div>
+            <label for="byoHubJumpboxSubnetId">BYO Hub Jumpbox Subnet ID</label>
+            <input id="byoHubJumpboxSubnetId" placeholder="/subscriptions/.../subnets/snet-jumpbox" />
+          </div>
+          <div>
+            <label for="byoHubPeSubnetId">BYO Hub PE Subnet ID</label>
+            <input id="byoHubPeSubnetId" placeholder="/subscriptions/.../subnets/snet-pe" />
+          </div>
+        </div>
+      </div>
+
+      <h2>Bastion / Jumpbox</h2>
+      <div class="grid">
+        <div>
+          <label for="bastionSku">Bastion SKU</label>
+          <select id="bastionSku">
+            <option>Basic</option>
+            <option selected>Standard</option>
+            <option>Developer</option>
+          </select>
+        </div>
+        <div>
+          <label for="jumpboxKeyPath">Jumpbox SSH Key Path</label>
+          <input id="jumpboxKeyPath" value=".deploy\\jumpbox_id_rsa" />
+        </div>
+      </div>
+      <div class="checks mt8">
+        <label class="check"><input type="checkbox" id="deployBastion" checked /> Deploy Bastion</label>
+        <label class="check"><input type="checkbox" id="deployJumpbox" checked /> Deploy Jumpbox</label>
+      </div>
+
+      <h2>Explicit Overrides (append)</h2>
+      <label for="manualOverrides">Raw hashtable body to append (optional)</label>
+      <textarea id="manualOverrides" placeholder="clusterAdminGroupObjectIds=@('guid1','guid2')"></textarea>
+
+      <div class="btns">
+        <button id="btnGenerate">Generate</button>
+        <button class="alt" id="btnCopyPs1">Copy deploy.ps1</button>
+        <button class="warn" id="btnCopyAz">Copy az command</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Validation</h2>
+      <div id="validation" class="hint">No issues.</div>
+
+      <h2>Auto-generated Overrides</h2>
+      <pre id="overridesOut"></pre>
+
+      <h2>deploy.ps1</h2>
+      <pre id="ps1Out"></pre>
+
+      <h2>Environment + az deployment</h2>
+      <pre id="azOut"></pre>
+
+      <p class="hint">
+        Private endpoint requests for AKS Automatic private mode are automatically guarded by template logic.
+        Use peering + DNS link as the primary pattern.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const q = (id) => {
+      const n = el(id);
+      if (!n) return '';
+      return n.type === 'checkbox' ? n.checked : n.value.trim();
+    };
+
+    function setStatus(kind, text) {
+      const n = el('status');
+      n.className = 'pill ' + kind;
+      n.textContent = text;
+    }
+
+    function single(str) {
+      return String(str).replace(/'/g, "''");
+    }
+
+    function linesToPsArray(text) {
+      const vals = String(text || '')
+        .split(/\r?\n/)
+        .map(v => v.trim())
+        .filter(Boolean)
+        .map(v => `'${single(v)}'`);
+      return vals.length ? `@(${vals.join(', ')})` : '';
+    }
+
+    function setVal(id, value) {
+      const n = el(id);
+      if (!n) return;
+      n.value = value;
+    }
+
+    function setCheck(id, value) {
+      const n = el(id);
+      if (!n) return;
+      n.checked = value;
+    }
+
+    function applyPreset(kind) {
+      if (kind === 'minimumCost') {
+        setVal('mode', 'automaticManaged');
+        setVal('hubMode', 'none');
+        setCheck('enableLaw', false);
+        setCheck('enableAmw', false);
+        setCheck('enableGrafana', false);
+        setVal('acrMode', 'none');
+        setVal('acrName', '');
+        setVal('existingAcrIds', '');
+        setCheck('deployBastion', false);
+        setCheck('deployJumpbox', false);
+        setVal('byoVnetSubnetId', '');
+        setVal('byoPodSubnetId', '');
+        setVal('byoPrivateDnsZoneId', '');
+        setVal('hubVnetId', '');
+        setVal('byoHubBastionSubnetId', '');
+        setVal('byoHubJumpboxSubnetId', '');
+        setVal('byoHubPeSubnetId', '');
+        setVal('manualOverrides', '');
+      }
+
+      if (kind === 'privateEnterprise') {
+        setVal('mode', 'automaticPrivate');
+        setVal('hubMode', 'peering');
+        setCheck('enableLaw', true);
+        setCheck('enableAmw', true);
+        setCheck('enableGrafana', true);
+        setVal('acrMode', 'existing');
+        setVal('existingAcrIds', '/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr-enterprise');
+        setCheck('deployBastion', true);
+        setCheck('deployJumpbox', true);
+        setVal('manualOverrides', "clusterAdminGroupObjectIds=@('00000000-0000-0000-0000-000000000000')");
+      }
+
+      if (kind === 'byoEverything') {
+        setVal('mode', 'automaticPrivate');
+        setVal('hubMode', 'peering');
+        setCheck('enableLaw', false);
+        setCheck('enableAmw', false);
+        setCheck('enableGrafana', false);
+        setVal('acrMode', 'existing');
+        setVal('existingAcrIds', '/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr-byo');
+        setVal('byoVnetSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-aks');
+        setVal('byoPodSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-pods');
+        setVal('byoPrivateDnsZoneId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/privateDnsZones/privatelink.swedencentral.azmk8s.io');
+        setVal('hubVnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub');
+        setVal('byoHubBastionSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/AzureBastionSubnet');
+        setVal('byoHubJumpboxSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/snet-jumpbox');
+        setVal('byoHubPeSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/snet-pe');
+        setCheck('deployBastion', false);
+        setCheck('deployJumpbox', false);
+        setVal('manualOverrides', '');
+      }
+
+      build();
+    }
+
+    function build() {
+      const issues = [];
+      const warns = [];
+
+      const subId = q('subId');
+      const location = q('location') || 'swedencentral';
+      const mode = q('mode');
+      const stage = q('stage');
+      const workload = q('workload') || 'aks';
+      const envName = q('envName') || 'dev';
+      const autoName = q('autoName');
+      const interactive = q('interactive');
+      const resume = q('resume');
+      const skipWhatIf = q('skipWhatIf');
+
+      const enableLaw = q('enableLaw');
+      const enableAmw = q('enableAmw');
+      const enableGrafana = q('enableGrafana');
+
+      const acrMode = q('acrMode');
+      const acrName = q('acrName');
+      const existingAcrIds = q('existingAcrIds');
+
+      const byoVnetSubnetId = q('byoVnetSubnetId');
+      const byoPodSubnetId = q('byoPodSubnetId');
+      const byoPrivateDnsZoneId = q('byoPrivateDnsZoneId');
+
+      const hubMode = q('hubMode');
+      const hubVnetId = q('hubVnetId');
+      const byoHubBastionSubnetId = q('byoHubBastionSubnetId');
+      const byoHubJumpboxSubnetId = q('byoHubJumpboxSubnetId');
+      const byoHubPeSubnetId = q('byoHubPeSubnetId');
+
+      const deployBastion = q('deployBastion');
+      const deployJumpbox = q('deployJumpbox');
+      const bastionSku = q('bastionSku');
+      const jumpboxKeyPath = q('jumpboxKeyPath') || '.deploy\\jumpbox_id_rsa';
+
+      const manualOverrides = q('manualOverrides');
+
+      if (!subId) issues.push('Subscription ID is required.');
+      if (!location) issues.push('Location is required.');
+      if (acrMode === 'new' && !acrName) issues.push('ACR mode=new requires acrName.');
+      if (acrMode === 'existing' && !linesToPsArray(existingAcrIds)) issues.push('ACR mode=existing requires at least one existing ACR ID.');
+
+      if (mode !== 'automaticPrivate' && (hubMode !== 'none' || byoVnetSubnetId || byoPrivateDnsZoneId)) {
+        warns.push('Hub and private network BYO values are mainly for automaticPrivate mode.');
+      }
+
+      if (mode === 'automaticPrivate' && (hubMode === 'privateEndpoint' || hubMode === 'both')) {
+        warns.push('AKS Automatic private uses API server VNet integration; management PE path is skipped by template guard logic.');
+      }
+
+      if (hubVnetId && deployBastion && !byoHubBastionSubnetId) {
+        issues.push('BYO hub + Bastion requires byoHubBastionSubnetId.');
+      }
+
+      if (hubVnetId && deployJumpbox && !byoHubJumpboxSubnetId) {
+        issues.push('BYO hub + Jumpbox requires byoHubJumpboxSubnetId.');
+      }
+
+      const ov = [];
+      ov.push(`mode='${single(mode)}'`);
+      ov.push(`location='${single(location)}'`);
+
+      ov.push(`logAnalyticsWorkspaceName='${enableLaw ? `log-${single(envName)}` : ''}'`);
+      ov.push(`azureMonitorWorkspaceName='${enableAmw ? `amw-${single(envName)}` : ''}'`);
+      ov.push(`enableManagedGrafana=${enableGrafana ? '$true' : '$false'}`);
+      if (!enableGrafana) ov.push("managedGrafanaName=''");
+
+      ov.push(`acrMode='${single(acrMode)}'`);
+      if (acrMode === 'new') ov.push(`acrName='${single(acrName)}'`);
+      if (acrMode === 'existing') {
+        const acrArray = linesToPsArray(existingAcrIds);
+        if (acrArray) ov.push(`existingAcrIds=${acrArray}`);
+      }
+
+      if (byoVnetSubnetId) ov.push(`byoVnetSubnetId='${single(byoVnetSubnetId)}'`);
+      if (byoPodSubnetId) ov.push(`byoPodSubnetId='${single(byoPodSubnetId)}'`);
+      if (byoPrivateDnsZoneId) ov.push(`byoPrivateDnsZoneId='${single(byoPrivateDnsZoneId)}'`);
+
+      ov.push(`hubConnectivityMode='${single(hubMode)}'`);
+      if (hubVnetId) ov.push(`byoHubVnetId='${single(hubVnetId)}'`);
+      if (byoHubBastionSubnetId) ov.push(`byoHubBastionSubnetId='${single(byoHubBastionSubnetId)}'`);
+      if (byoHubJumpboxSubnetId) ov.push(`byoHubJumpboxSubnetId='${single(byoHubJumpboxSubnetId)}'`);
+      if (byoHubPeSubnetId) ov.push(`byoHubPeSubnetId='${single(byoHubPeSubnetId)}'`);
+
+      ov.push(`deployBastion=${deployBastion ? '$true' : '$false'}`);
+      ov.push(`bastionSku='${single(bastionSku)}'`);
+      ov.push(`deployJumpbox=${deployJumpbox ? '$true' : '$false'}`);
+
+      if (manualOverrides) ov.push(manualOverrides);
+
+      const overridesBody = ov.join('; ');
+
+      const ps = [
+        '.\\deploy.ps1',
+        `-SubscriptionId ${subId || '<sub-id>'}`,
+        `-Location ${location}`,
+        `-Mode ${mode}`,
+        `-WorkloadName ${workload}`,
+        `-Environment ${envName}`,
+        `-Stage ${stage}`
+      ];
+
+      if (autoName) ps.push('-AutoName');
+      if (interactive) ps.push('-Interactive');
+      if (resume) ps.push('-Resume');
+      if (skipWhatIf) ps.push('-SkipWhatIf');
+      if (deployJumpbox) ps.push(`-JumpboxSshKeyPath "${jumpboxKeyPath}"`);
+      ps.push(`-Overrides @{ ${overridesBody} }`);
+
+      const psCmd = ps.join(' `\n  ');
+
+      const azLines = [
+        `$env:AZURE_ENV_NAME='${single(envName)}'`,
+        `$env:AZURE_LOCATION='${single(location)}'`,
+        `$env:AKS_MODE='${single(mode)}'`,
+        `$env:HUB_CONNECTIVITY_MODE='${single(hubMode)}'`,
+        `$env:DEPLOY_BASTION='${deployBastion ? 'true' : 'false'}'`,
+        `$env:BASTION_SKU='${single(bastionSku)}'`,
+        `$env:DEPLOY_JUMPBOX='${deployJumpbox ? 'true' : 'false'}'`
+      ];
+      if (deployJumpbox) {
+        azLines.push(`$env:JUMPBOX_SSH_PUBLIC_KEY=(Get-Content -Raw '${single(jumpboxKeyPath)}.pub').Trim()`);
+      }
+      azLines.push(`az deployment sub create --location ${location} --template-file main.bicep --parameters main.bicepparam`);
+      azLines.push('# For extra non-env overrides, append: --parameters key=value');
+
+      el('overridesOut').textContent = `@{ ${overridesBody} }`;
+      el('ps1Out').textContent = psCmd;
+      el('azOut').textContent = azLines.join('\n');
+
+      const msgs = [];
+      issues.forEach(x => msgs.push('ERROR: ' + x));
+      warns.forEach(x => msgs.push('WARN: ' + x));
+      el('validation').textContent = msgs.length ? msgs.join(' | ') : 'No issues.';
+
+      if (issues.length) setStatus('err', 'Validation Errors');
+      else if (warns.length) setStatus('warn', 'Ready (Warnings)');
+      else setStatus('ok', 'Ready');
+    }
+
+    async function copyText(nodeId) {
+      const txt = el(nodeId).textContent;
+      if (!txt) return;
+      await navigator.clipboard.writeText(txt);
+    }
+
+    el('btnGenerate').addEventListener('click', build);
+    el('btnCopyPs1').addEventListener('click', () => copyText('ps1Out'));
+    el('btnCopyAz').addEventListener('click', () => copyText('azOut'));
+    el('btnPresetMin').addEventListener('click', () => applyPreset('minimumCost'));
+    el('btnPresetEnt').addEventListener('click', () => applyPreset('privateEnterprise'));
+    el('btnPresetByo').addEventListener('click', () => applyPreset('byoEverything'));
+
+    [
+      'subId','location','mode','stage','workload','envName','autoName','interactive','resume','skipWhatIf',
+      'enableLaw','enableAmw','enableGrafana','acrMode','acrName','existingAcrIds',
+      'byoVnetSubnetId','byoPodSubnetId','byoPrivateDnsZoneId',
+      'hubMode','hubVnetId','byoHubBastionSubnetId','byoHubJumpboxSubnetId','byoHubPeSubnetId',
+      'deployBastion','deployJumpbox','bastionSku','jumpboxKeyPath','manualOverrides'
+    ].forEach(id => {
+      const n = el(id);
+      if (!n) return;
+      n.addEventListener('change', build);
+      n.addEventListener('keyup', build);
+    });
+
+    build();
+  </script>
+</body>
+</html>

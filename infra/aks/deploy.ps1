@@ -42,7 +42,17 @@ param(
     [string]$Stage = 'All',
     [switch]$SkipWhatIf,
     [string]$DeploymentName,
-    [hashtable]$Overrides = @{}
+    [hashtable]$Overrides = @{},
+
+    # ---- Hub connectivity (only meaningful in private mode) ----
+    [ValidateSet('none','peering','privateEndpoint','both')]
+    [string]$HubConnectivityMode = 'none',
+    [string]$HubVnetId = '',              # BYO hub VNet resource ID (empty = create one)
+    [switch]$DeployBastion,
+    [ValidateSet('Basic','Standard','Developer')]
+    [string]$BastionSku = 'Standard',
+    [switch]$DeployJumpbox,
+    [string]$JumpboxSshKeyPath           # default: <state>/jumpbox_id_rsa (generated if missing)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -365,6 +375,49 @@ try {
     foreach ($k in @($Overrides.Keys)) { $overrides[$k] = $Overrides[$k] }
     $overrides['mode'] = $Mode
     $overrides['location'] = $Location
+
+    # ---- Hub connectivity overrides ----
+    if ($Mode -eq 'automaticPrivate' -and $HubConnectivityMode -ne 'none') {
+        $overrides['hubConnectivityMode'] = $HubConnectivityMode
+        if ($HubVnetId) {
+            $overrides['byoHubVnetId'] = $HubVnetId
+            if ($DeployBastion -and -not $overrides.ContainsKey('byoHubBastionSubnetId')) {
+                throw "BYO hub VNet supplied + -DeployBastion: also pass -Overrides @{ byoHubBastionSubnetId = '<full subnet resource id>' }."
+            }
+            if ($DeployJumpbox -and -not $overrides.ContainsKey('byoHubJumpboxSubnetId')) {
+                throw "BYO hub VNet supplied + -DeployJumpbox: also pass -Overrides @{ byoHubJumpboxSubnetId = '<full subnet resource id>' }."
+            }
+            if (($HubConnectivityMode -eq 'privateEndpoint' -or $HubConnectivityMode -eq 'both') `
+                -and -not $overrides.ContainsKey('byoHubPeSubnetId') -and -not $overrides.ContainsKey('byoHubJumpboxSubnetId')) {
+                throw "BYO hub VNet + PE mode: pass -Overrides @{ byoHubPeSubnetId = '<subnet resource id>' } (or byoHubJumpboxSubnetId as fallback)."
+            }
+        }
+        if ($DeployBastion) {
+            $overrides['deployBastion'] = 'true'
+            $overrides['bastionSku'] = $BastionSku
+        }
+        if ($DeployJumpbox) {
+            $overrides['deployJumpbox'] = 'true'
+            if (-not $JumpboxSshKeyPath) { $JumpboxSshKeyPath = Join-Path $state 'jumpbox_id_rsa' }
+            $pubPath = "$JumpboxSshKeyPath.pub"
+            if (-not (Test-Path $pubPath)) {
+                Write-Host "  Generating SSH keypair at $JumpboxSshKeyPath ..."
+                if (-not (Get-Command ssh-keygen -ErrorAction SilentlyContinue)) {
+                    throw "ssh-keygen not found; install OpenSSH client or pass -JumpboxSshKeyPath to an existing keypair."
+                }
+                # PS5 mangles empty-string args to native commands; route through cmd.exe for reliability.
+                cmd /c "ssh-keygen -t rsa -b 4096 -f `"$JumpboxSshKeyPath`" -N `"`" -q" | Out-Null
+                if (-not (Test-Path $pubPath)) { throw "ssh-keygen failed to produce $pubPath" }
+            }
+            $pubKey = (Get-Content -Raw -Path $pubPath).Trim()
+            $overrides['jumpboxSshPublicKey'] = $pubKey
+            Write-Ok "Jumpbox SSH key: $JumpboxSshKeyPath"
+        }
+    } elseif ($HubConnectivityMode -ne 'none') {
+        Write-Warn2 "HubConnectivityMode='$HubConnectivityMode' ignored (only applies to -Mode automaticPrivate)."
+    } elseif ($DeployBastion -or $DeployJumpbox) {
+        throw "-DeployBastion / -DeployJumpbox require -HubConnectivityMode (peering | privateEndpoint | both)."
+    }
 
     if (-not $DeploymentName) {
         $DeploymentName = "aks-automatic-$(Get-Date -Format yyyyMMdd-HHmmss)"

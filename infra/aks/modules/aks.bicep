@@ -69,9 +69,12 @@ param vnetSubnetId string = ''
 @description('Pod subnet resource ID (optional, for pod-subnet mode).')
 param podSubnetId string = ''
 
+@description('API server VNet integration subnet resource ID. Required when private + custom VNet (AKS Automatic enables apiserver VNet integration implicitly).')
+param apiServerSubnetId string = ''
+
 // ---------- System pool ----------
 @description('System pool VM size (ignored when hostedSystemProfile is enabled).')
-param systemPoolVmSize string = 'Standard_D4pds_v5'
+param systemPoolVmSize string = 'Standard_D4ds_v5'
 
 @description('System pool initial node count.')
 param systemPoolNodeCount int = 3
@@ -228,15 +231,17 @@ var aadProfile = enableAzureRbac ? {
   adminGroupObjectIDs: clusterAdminGroupObjectIds
 } : null
 
-var apiServerAccessProfile = enablePrivateCluster ? {
+var apiServerAccessProfile = enablePrivateCluster ? union({
   enablePrivateCluster: true
   privateDNSZone: privateDnsZone
   enablePrivateClusterPublicFQDN: !disablePrivateClusterPublicFqdn
   authorizedIPRanges: []
-} : (empty(apiServerAuthorizedIpRanges) ? null : {
+  disableRunCommand: disableRunCommand
+}, empty(apiServerSubnetId) ? {} : { subnetId: apiServerSubnetId }) : union({
   enablePrivateCluster: false
-  authorizedIPRanges: apiServerAuthorizedIpRanges
-})
+  authorizedIPRanges: empty(apiServerAuthorizedIpRanges) ? [] : apiServerAuthorizedIpRanges
+  disableRunCommand: disableRunCommand
+}, empty(apiServerSubnetId) ? {} : { subnetId: apiServerSubnetId })
 
 var systemPool = {
   name: 'systempool'
@@ -246,7 +251,9 @@ var systemPool = {
   count: systemPoolNodeCount
   vmSize: systemPoolVmSize
   type: 'VirtualMachineScaleSets'
-  availabilityZones: systemPoolZones
+  // Some regions / SKUs don't support availability zones (e.g. westus3 + many SKUs).
+  // Pass an empty array to opt out; AKS rejects ['1','2','3'] there.
+  availabilityZones: empty(systemPoolZones) ? null : systemPoolZones
   vnetSubnetID: empty(vnetSubnetId) ? null : vnetSubnetId
   podSubnetID: empty(podSubnetId) ? null : podSubnetId
 }
@@ -336,6 +343,61 @@ var metricsProfile = {
   costAnalysis: { enabled: enableCostAnalysis }
 }
 
+var baseProperties = {
+  dnsPrefix: dnsPrefix
+  fqdnSubdomain: empty(fqdnSubdomain) ? null : fqdnSubdomain
+  kubernetesVersion: empty(kubernetesVersion) ? null : kubernetesVersion
+  nodeResourceGroup: empty(nodeResourceGroup) ? null : nodeResourceGroup
+  nodeResourceGroupProfile: {
+    restrictionLevel: nodeResourceGroupRestrictionLevel
+  }
+  supportPlan: supportPlan
+  enableRBAC: true
+  disableLocalAccounts: disableLocalAccounts
+  agentPoolProfiles: enableHostedSystem ? [] : [ systemPool ]
+  identityProfile: {
+    kubeletidentity: {
+      resourceId: kubeletIdentityId
+      clientId: kubeletIdentityClientId
+      objectId: kubeletIdentityObjectId
+    }
+  }
+  networkProfile: {
+    networkPlugin: networkPlugin
+    networkPluginMode: empty(networkPluginMode) ? null : networkPluginMode
+    networkDataplane: networkDataplane
+    networkPolicy: networkPolicy
+    podCidr: networkPluginMode == 'overlay' ? podCidr : null
+    serviceCidr: serviceCidr
+    dnsServiceIP: dnsServiceIp
+    outboundType: outboundType
+    loadBalancerSku: loadBalancerSku
+  }
+  aadProfile: aadProfile
+  apiServerAccessProfile: apiServerAccessProfile
+  oidcIssuerProfile: { enabled: enableOidcIssuer }
+  securityProfile: securityProfile
+  addonProfiles: addonProfiles
+  ingressProfile: ingressProfile
+  serviceMeshProfile: serviceMeshProfile
+  azureMonitorProfile: azureMonitorProfile
+  workloadAutoScalerProfile: workloadAutoScalerProfile
+  storageProfile: storageProfile
+  aiToolchainOperatorProfile: aiToolchainOperatorProfile
+  metricsProfile: metricsProfile
+  httpProxyConfig: empty(httpProxyConfig) ? null : httpProxyConfig
+  diskEncryptionSetID: empty(diskEncryptionSetId) ? null : diskEncryptionSetId
+  autoUpgradeProfile: {
+    upgradeChannel: autoUpgradeChannel
+    nodeOSUpgradeChannel: nodeOsUpgradeChannel
+  }
+}
+
+// hostedSystemProfile is a preview field that the RP rejects when unknown
+// (UnmarshalError on `null`). Only add it when actually enabling the feature.
+#disable-next-line BCP037
+var aksProperties = enableHostedSystem ? union(baseProperties, { hostedSystemProfile: { enabled: true } }) : baseProperties
+
 resource aks 'Microsoft.ContainerService/managedClusters@2025-03-02-preview' = {
   name: clusterName
   location: location
@@ -350,66 +412,12 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-03-02-preview' = {
       '${controlPlaneIdentityId}': {}
     }
   }
-  properties: {
-    dnsPrefix: dnsPrefix
-    fqdnSubdomain: empty(fqdnSubdomain) ? null : fqdnSubdomain
-    kubernetesVersion: empty(kubernetesVersion) ? null : kubernetesVersion
-    nodeResourceGroup: empty(nodeResourceGroup) ? null : nodeResourceGroup
-    nodeResourceGroupProfile: {
-      restrictionLevel: nodeResourceGroupRestrictionLevel
-    }
-    supportPlan: supportPlan
-    enableRBAC: true
-    disableLocalAccounts: disableLocalAccounts
-    #disable-next-line BCP037
-    disableRunCommand: disableRunCommand
-    #disable-next-line BCP037
-    hostedSystemProfile: enableHostedSystem ? { enabled: true } : null
-    // When hostedSystemProfile.enabled=true AKS provisions/manages the system pool itself;
-    // declaring our own system-mode pool would be rejected by the RP.
-    agentPoolProfiles: enableHostedSystem ? [] : [ systemPool ]
-    identityProfile: {
-      kubeletidentity: {
-        resourceId: kubeletIdentityId
-        clientId: kubeletIdentityClientId
-        objectId: kubeletIdentityObjectId
-      }
-    }
-    networkProfile: {
-      networkPlugin: networkPlugin
-      networkPluginMode: empty(networkPluginMode) ? null : networkPluginMode
-      networkDataplane: networkDataplane
-      networkPolicy: networkPolicy
-      podCidr: networkPluginMode == 'overlay' ? podCidr : null
-      serviceCidr: serviceCidr
-      dnsServiceIP: dnsServiceIp
-      outboundType: outboundType
-      loadBalancerSku: loadBalancerSku
-    }
-    aadProfile: aadProfile
-    apiServerAccessProfile: apiServerAccessProfile
-    oidcIssuerProfile: { enabled: enableOidcIssuer }
-    securityProfile: securityProfile
-    addonProfiles: addonProfiles
-    ingressProfile: ingressProfile
-    serviceMeshProfile: serviceMeshProfile
-    azureMonitorProfile: azureMonitorProfile
-    workloadAutoScalerProfile: workloadAutoScalerProfile
-    storageProfile: storageProfile
-    aiToolchainOperatorProfile: aiToolchainOperatorProfile
-    metricsProfile: metricsProfile
-    httpProxyConfig: empty(httpProxyConfig) ? null : httpProxyConfig
-    diskEncryptionSetID: empty(diskEncryptionSetId) ? null : diskEncryptionSetId
-    autoUpgradeProfile: {
-      upgradeChannel: autoUpgradeChannel
-      nodeOSUpgradeChannel: nodeOsUpgradeChannel
-    }
-  }
+  properties: aksProperties
 }
 
 output clusterId string = aks.id
 output clusterName string = aks.name
-output clusterFqdn string = aks.properties.fqdn
+output clusterFqdn string = enablePrivateCluster ? (disablePrivateClusterPublicFqdn ? aks.properties.privateFQDN : aks.properties.azurePortalFQDN) : aks.properties.azurePortalFQDN
 output clusterPrivateFqdn string = enablePrivateCluster ? aks.properties.privateFQDN : ''
 output oidcIssuerUrl string = enableOidcIssuer ? aks.properties.oidcIssuerProfile.issuerURL : ''
 output nodeResourceGroup string = aks.properties.nodeResourceGroup

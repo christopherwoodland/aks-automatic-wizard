@@ -24,15 +24,25 @@ staged PowerShell/Bash driver.
     ├── main.bicepparam                # all parameters (override anything you want)
     ├── deploy.ps1                     # progressive driver (Windows / PS Core)
     ├── deploy.sh                      # progressive driver (Linux/macOS)
+    ├── deploy-wizard.ps1              # launches browser-based command wizard UI
+    ├── wizard/
+    │   └── index.html                 # user-friendly deployment wizard
     └── modules/
         ├── identity.bicep             # control-plane + kubelet UAMI
         ├── network.bicep              # VNet, AKS subnet, PE subnet, NSG
         ├── privateDns.bicep           # privatelink.<region>.azmk8s.io + VNet link
+      ├── privateDnsLink.bicep       # additional VNet links (e.g., hub)
         ├── logAnalytics.bicep         # Container Insights workspace
         ├── monitoring.bicep           # Azure Monitor workspace + optional Grafana
         ├── acr.bicep                  # optional new ACR
+      ├── hub.bicep                  # optional hub VNet + Bastion + jumpbox subnets
+      ├── peering.bicep              # bidirectional VNet peering helper
+      ├── bastion.bicep              # Bastion host
+      ├── jumpbox.bicep              # Linux jumpbox VM
+      ├── aksPrivateEndpoint.bicep   # AKS management PE (legacy private clusters)
         ├── roleAssignments.bicep      # kubelet MIO + ACR pull + app-routing DNS
         ├── roleAssignmentAcr.bicep
+      ├── roleAssignmentAks.bicep
         ├── roleAssignmentDnsZone.bicep
         ├── roleAssignmentSubnet.bicep      # cross-sub safe Network Contributor on subnet
         ├── roleAssignmentPrivateDns.bicep  # cross-sub safe PDNS Zone Contributor
@@ -76,6 +86,24 @@ cd infra\aks
 cd infra/aks
 ./deploy.sh -s <sub-id> -l westus3 --auto-name
 ```
+
+### Option B2 — deployment wizard UI (recommended for first-time users)
+
+Launch the local browser wizard to build correct commands for `deploy.ps1` and
+for raw `az deployment` usage:
+
+```powershell
+cd infra\aks
+.\deploy-wizard.ps1
+```
+
+The wizard helps with:
+
+- Choosing mode (`automaticManaged` vs `automaticPrivate`)
+- Hub connectivity (`none`, `peering`, `privateEndpoint`, `both`)
+- Bastion + jumpbox toggles and SSH key path
+- Generating copy-paste-ready `deploy.ps1` and `az deployment sub create` commands
+- Highlighting validation warnings for incompatible combinations
 
 ### Option C — raw `az deployment` (CI-friendly)
 
@@ -129,6 +157,97 @@ Patch a single parameter without editing the file:
 ```powershell
 .\deploy.ps1 -Resume -Overrides @{ enableManagedGrafana = 'true' }
 ```
+
+## Hub connectivity modes
+
+`hubConnectivityMode` options:
+
+- `none`: no hub resources
+- `peering`: peer hub and spoke VNets
+- `privateEndpoint`: request AKS management private endpoint in hub
+- `both`: peering + private endpoint request
+
+Important AKS Automatic note:
+
+- In `automaticPrivate`, AKS Automatic uses API server VNet integration.
+- The AKS `management` private endpoint path is not supported in that model.
+- The template now guards this path and skips PE when API server VNet integration is active.
+- For AKS Automatic private, use hub peering + private DNS link as the supported pattern.
+
+## Optional + BYO matrix
+
+The template is designed so most components are optional and many can be
+bring-your-own (BYO):
+
+| Area | Optional? | BYO support | Key parameters |
+|---|---|---|---|
+| AKS cluster | No | No (cluster is the primary resource) | `clusterName`, `mode` |
+| Log Analytics | Yes | Name-based reuse in same RG | `logAnalyticsWorkspaceName` (empty = skip) |
+| Azure Monitor workspace | Yes | Name-based reuse in same RG | `azureMonitorWorkspaceName` (empty = skip) |
+| Managed Grafana | Yes | Name-based reuse in same RG | `enableManagedGrafana`, `managedGrafanaName` |
+| ACR | Yes | Yes (cross-sub/RG IDs) | `acrMode`, `acrName`, `existingAcrIds` |
+| Spoke VNet/subnet | Yes (for private mode) | Yes | `byoVnetSubnetId`, `byoPodSubnetId` |
+| Private DNS zone | Yes | Yes (cross-sub/RG ID) | `byoPrivateDnsZoneId` |
+| Hub VNet | Yes | Yes | `hubConnectivityMode`, `byoHubVnetId` |
+| Hub Bastion subnet | Yes | Yes | `byoHubBastionSubnetId` |
+| Hub jumpbox subnet | Yes | Yes | `byoHubJumpboxSubnetId` |
+| Hub PE subnet | Yes | Yes | `byoHubPeSubnetId` |
+| Bastion | Yes | N/A (resource optional) | `deployBastion`, `bastionSku` |
+| Jumpbox | Yes | N/A (resource optional) | `deployJumpbox`, `jumpboxSshPublicKey` |
+
+Notes:
+
+- BYO IDs can point to other subscriptions/resource groups as long as the
+  deploying principal has required rights at those scopes.
+- In `automaticPrivate`, if BYO hub VNet is used with Bastion/Jumpbox, provide
+  BYO subnet IDs as well.
+- AKS Automatic private mode still follows the API server VNet integration
+  behavior described above.
+
+## Wizard behavior
+
+The wizard now generates overrides from explicit optional/BYO fields, so users
+do not need to handcraft a large `-Overrides` block. A manual append box still
+exists for advanced parameters not exposed in the UI.
+
+Built-in one-click presets:
+
+- `1) Minimum Cost`: managed mode, no hub, no Bastion/jumpbox, minimal add-ons.
+- `2) Private Enterprise`: private mode, peering + Bastion + jumpbox, monitoring on, existing ACR flow.
+- `3) BYO Everything`: private mode with BYO placeholders for spoke subnet, private DNS zone, hub VNet, and hub subnets.
+
+These presets are starting points; every field remains editable after applying a preset.
+
+## Bastion + jumpbox access
+
+For native `az network bastion ssh` client access you need:
+
+- Bastion Standard SKU
+- `enableTunneling = true`
+- Azure CLI extensions: `bastion` and `ssh`
+
+If `az network bastion ssh` still fails locally, use tunnel mode (works reliably):
+
+```powershell
+$vmId = az vm show -g rg-ca -n vm-aks-ca-jb --query id -o tsv
+az network bastion tunnel --name bas-aks-ca --resource-group rg-ca --target-resource-id $vmId --resource-port 22 --port 50022
+```
+
+Then in another shell:
+
+```powershell
+ssh -i .deploy\jumpbox_id_rsa -p 50022 azureuser@127.0.0.1
+```
+
+## Azure RBAC on cluster (kubectl authorization)
+
+`kubectl` errors like `nodes is forbidden` indicate Azure RBAC role assignment issues,
+not network reachability. For jumpbox managed identity access, assign at least:
+
+- `Azure Kubernetes Service Cluster User Role`
+- `Azure Kubernetes Service RBAC Cluster Admin` (or a narrower custom role as needed)
+
+at the AKS cluster scope.
 
 ## Customization — every name is overridable
 

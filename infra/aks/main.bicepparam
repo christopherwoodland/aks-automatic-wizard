@@ -100,10 +100,13 @@ param outboundType = 'managedNATGateway'
 param loadBalancerSku = 'standard'
 param httpProxyConfig = {}
 
-param systemPoolVmSize = 'Standard_D4pds_v5'
+param systemPoolVmSize = 'Standard_D4ds_v5'
 param systemPoolNodeCount = 3
 param systemPoolOsSku = 'AzureLinux'
-param systemPoolZones = [ '1', '2', '3' ]
+// AKS Automatic SKU requires AvailabilityZones on the system pool. Default to all
+// three zones; override per-region if AKS supports a subset (e.g. westus3 = ['2','3']).
+// Used only when enableHostedSystem=false (private mode).
+param systemPoolZones = ['1', '2', '3']
 
 param autoUpgradeChannel = 'stable'
 param nodeOsUpgradeChannel = 'NodeImage'
@@ -119,3 +122,29 @@ param nodeOsUpgradeChannel = 'NodeImage'
 // }
 param autoUpgradeMaintenanceWindow = {}
 param nodeOsMaintenanceWindow = {}
+
+// ---- Hub connectivity (private mode only) ----
+// Set HUB_CONNECTIVITY_MODE env var to one of: none | peering | privateEndpoint | both
+// Note: for AKS Automatic private mode, the API server uses VNet integration;
+// management private endpoint is skipped by template guard logic.
+param hubConnectivityMode = readEnvironmentVariable('HUB_CONNECTIVITY_MODE', 'none')
+// BYO hub VNet resource ID (empty = create new hub VNet in this RG)
+param byoHubVnetId = readEnvironmentVariable('HUB_VNET_ID', '')
+param hubVnetName = ''
+param hubAddressPrefixes = [ '10.250.0.0/16' ]
+param hubBastionSubnetPrefix = '10.250.1.0/26'
+param hubJumpboxSubnetName = 'snet-jumpbox'
+param hubJumpboxSubnetPrefix = '10.250.2.0/27'
+param byoHubBastionSubnetId = ''
+param byoHubJumpboxSubnetId = ''
+param byoHubPeSubnetId = ''
+
+// Bastion / Jumpbox
+param deployBastion = bool(readEnvironmentVariable('DEPLOY_BASTION', 'false'))
+param bastionSku = readEnvironmentVariable('BASTION_SKU', 'Standard')
+param bastionName = ''
+param deployJumpbox = bool(readEnvironmentVariable('DEPLOY_JUMPBOX', 'false'))
+param jumpboxVmName = ''
+param jumpboxVmSize = 'Standard_B2s'
+param jumpboxAdminUsername = 'azureuser'
+param jumpboxSshPublicKey = readEnvironmentVariable('JUMPBOX_SSH_PUBLIC_KEY', '')

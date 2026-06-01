@@ -89,6 +89,12 @@ param privateEndpointSubnetName string = 'snet-pe'
 @description('Private endpoint subnet CIDR.')
 param privateEndpointSubnetPrefix string = '10.240.4.0/24'
 
+@description('API server VNet integration subnet name. AKS Automatic implicitly enables apiserver VNet integration; a dedicated delegated subnet is required when using a custom VNet.')
+param apiServerSubnetName string = 'snet-apiserver'
+
+@description('API server subnet CIDR. Must be at least /28 and delegated to Microsoft.ContainerService/managedClusters.')
+param apiServerSubnetPrefix string = '10.240.5.0/28'
+
 @description('AKS subnet NSG name.')
 param aksNsgName string = ''
 
@@ -106,6 +112,64 @@ param byoPrivateDnsZoneId string = ''
 
 @description('VNet link name for the private DNS zone.')
 param privateDnsVnetLinkName string = 'vnet-link'
+
+// ---------- Hub connectivity (private mode only) ----------
+@description('Hub-to-AKS connectivity model for the private API server. none = no hub. peering = hub VNet peered to the AKS VNet (cheapest). privateEndpoint = Private Endpoint in the hub VNet (works without peering, ~$7/mo). both = peering + private endpoint.')
+@allowed([ 'none', 'peering', 'privateEndpoint', 'both' ])
+param hubConnectivityMode string = 'none'
+
+@description('Bring-your-own hub VNet resource ID. Empty = create a new hub VNet in this RG when hubConnectivityMode != none.')
+param byoHubVnetId string = ''
+
+@description('Hub VNet name (only used when creating a new hub).')
+param hubVnetName string = ''
+
+@description('Hub VNet address prefixes (only used when creating a new hub).')
+param hubAddressPrefixes array = [ '10.250.0.0/16' ]
+
+@description('AzureBastionSubnet CIDR (only used when creating a new hub). Must be >= /26.')
+param hubBastionSubnetPrefix string = '10.250.1.0/26'
+
+@description('Jumpbox subnet name (only used when creating a new hub).')
+param hubJumpboxSubnetName string = 'snet-jumpbox'
+
+@description('Jumpbox subnet CIDR (only used when creating a new hub).')
+param hubJumpboxSubnetPrefix string = '10.250.2.0/27'
+
+@description('BYO hub bastion subnet resource ID (full /subscriptions/.../subnets/AzureBastionSubnet). Empty = use bastionSubnetId from new hub.')
+param byoHubBastionSubnetId string = ''
+
+@description('BYO hub jumpbox subnet resource ID. Empty = use jumpboxSubnetId from new hub.')
+param byoHubJumpboxSubnetId string = ''
+
+@description('BYO hub PE subnet resource ID (used for Private Endpoint when hubConnectivityMode in [privateEndpoint, both]). Empty = use the jumpbox subnet.')
+param byoHubPeSubnetId string = ''
+
+@description('Deploy Azure Bastion in the hub.')
+param deployBastion bool = false
+
+@description('Azure Bastion SKU.')
+@allowed([ 'Basic', 'Standard', 'Developer' ])
+param bastionSku string = 'Standard'
+
+@description('Bastion host name.')
+param bastionName string = ''
+
+@description('Deploy a Linux jumpbox VM in the hub jumpbox subnet.')
+param deployJumpbox bool = false
+
+@description('Jumpbox VM name.')
+param jumpboxVmName string = ''
+
+@description('Jumpbox VM size.')
+param jumpboxVmSize string = 'Standard_B2s'
+
+@description('Jumpbox admin username.')
+param jumpboxAdminUsername string = 'azureuser'
+
+@description('Jumpbox SSH public key (OpenSSH format). Required when deployJumpbox=true.')
+@secure()
+param jumpboxSshPublicKey string = ''
 
 // ---------- AKS knobs ----------
 @description('Kubernetes version.')
@@ -359,12 +423,15 @@ module networkMod 'modules/network.bicep' = if (isPrivate && empty(byoVnetSubnet
     createPrivateEndpointSubnet: createPrivateEndpointSubnet
     privateEndpointSubnetName: privateEndpointSubnetName
     privateEndpointSubnetPrefix: privateEndpointSubnetPrefix
+    apiServerSubnetName: apiServerSubnetName
+    apiServerSubnetPrefix: apiServerSubnetPrefix
     aksNsgName: effectiveNsgName
     tags: tags
   }
 }
 
 var effectiveVnetSubnetId = isPrivate ? (empty(byoVnetSubnetId) ? networkMod!.outputs.aksSubnetId : byoVnetSubnetId) : ''
+var effectiveApiServerSubnetId = (isPrivate && empty(byoVnetSubnetId)) ? networkMod!.outputs.apiServerSubnetId : ''
 
 // ============================================================================
 //  Private DNS (private mode, unless BYO zone supplied)
@@ -378,6 +445,7 @@ module pdnsMod 'modules/privateDns.bicep' = if (isPrivate && empty(byoPrivateDns
     vnetLinkName: privateDnsVnetLinkName
     tags: tags
   }
+  dependsOn: empty(byoVnetSubnetId) ? [ networkMod ] : []
 }
 
 var effectivePrivateDnsZoneId = isPrivate ? (empty(byoPrivateDnsZoneId) ? pdnsMod!.outputs.privateDnsZoneId : byoPrivateDnsZoneId) : ''
@@ -410,6 +478,19 @@ module raSubnet 'modules/roleAssignmentSubnet.bicep' = if (isPrivate) {
   params: {
     vnetName: vnetNameEffective
     subnetName: subnetNameEffective
+    principalId: identityMod.outputs.controlPlaneIdentityPrincipalId
+    roleDefinitionId: '4d97b98b-1d4f-4787-a291-c67834d212e7'
+  }
+}
+
+// Network Contributor on the apiserver VNet integration subnet (only when we created it).
+module raApiServerSubnet 'modules/roleAssignmentSubnet.bicep' = if (isPrivate && empty(byoVnetSubnetId)) {
+  name: 'raApiServerSubnet'
+  scope: rg
+  dependsOn: [ networkMod ]
+  params: {
+    vnetName: vnetNameEffective
+    subnetName: apiServerSubnetName
     principalId: identityMod.outputs.controlPlaneIdentityPrincipalId
     roleDefinitionId: '4d97b98b-1d4f-4787-a291-c67834d212e7'
   }
@@ -449,7 +530,7 @@ module preAksRbac 'modules/roleAssignments.bicep' = {
 module aksMod 'modules/aks.bicep' = {
   name: 'aks'
   scope: rg
-  dependsOn: [ preAksRbac, raSubnet, raPrivateDns ]
+  dependsOn: [ preAksRbac, raSubnet, raPrivateDns, raApiServerSubnet ]
   params: {
     location: location
     clusterName: clusterName
@@ -471,6 +552,7 @@ module aksMod 'modules/aks.bicep' = {
     apiServerAuthorizedIpRanges: apiServerAuthorizedIpRanges
     vnetSubnetId: effectiveVnetSubnetId
     podSubnetId: byoPodSubnetId
+    apiServerSubnetId: effectiveApiServerSubnetId
     systemPoolVmSize: systemPoolVmSize
     systemPoolNodeCount: systemPoolNodeCount
     systemPoolOsSku: systemPoolOsSku
@@ -482,7 +564,8 @@ module aksMod 'modules/aks.bicep' = {
     podCidr: podCidr
     serviceCidr: serviceCidr
     dnsServiceIp: dnsServiceIp
-    outboundType: outboundType
+    // managedNATGateway only works with AKS-managed VNet. BYO subnet requires loadBalancer (or UDR/user NAT).
+    outboundType: isPrivate ? 'loadBalancer' : outboundType
     loadBalancerSku: loadBalancerSku
     httpProxyConfig: httpProxyConfig
     disableLocalAccounts: disableLocalAccounts
@@ -560,6 +643,143 @@ module maintMod 'modules/maintenance.bicep' = if (!empty(autoUpgradeMaintenanceW
 }
 
 // ============================================================================
+//  Hub connectivity for the private API server (private mode only)
+// ============================================================================
+var wantHub = isPrivate && hubConnectivityMode != 'none'
+var createHubVnet = wantHub && empty(byoHubVnetId)
+var effectiveHubVnetName = empty(hubVnetName) ? 'vnet-${clusterName}-hub' : hubVnetName
+var effectiveBastionName = empty(bastionName) ? 'bas-${clusterName}' : bastionName
+var effectiveJumpboxName = empty(jumpboxVmName) ? 'vm-${clusterName}-jb' : jumpboxVmName
+
+module hubMod 'modules/hub.bicep' = if (createHubVnet) {
+  name: 'hub'
+  scope: rg
+  params: {
+    location: location
+    hubVnetName: effectiveHubVnetName
+    hubAddressPrefixes: hubAddressPrefixes
+    bastionSubnetPrefix: hubBastionSubnetPrefix
+    jumpboxSubnetName: hubJumpboxSubnetName
+    jumpboxSubnetPrefix: hubJumpboxSubnetPrefix
+    tags: tags
+  }
+}
+
+var effectiveHubVnetId = createHubVnet ? hubMod!.outputs.hubVnetId : byoHubVnetId
+var byoHubSegs = split(byoHubVnetId, '/')
+var hubSubId = wantHub ? (createHubVnet ? subscription().subscriptionId : byoHubSegs[2]) : ''
+var hubRgName = wantHub ? (createHubVnet ? resourceGroupName : byoHubSegs[4]) : ''
+var hubVnetNameEffective = wantHub ? (createHubVnet ? effectiveHubVnetName : byoHubSegs[8]) : ''
+var effectiveBastionSubnetId = createHubVnet ? hubMod!.outputs.bastionSubnetId : byoHubBastionSubnetId
+var effectiveJumpboxSubnetId = createHubVnet ? hubMod!.outputs.jumpboxSubnetId : byoHubJumpboxSubnetId
+var effectivePeSubnetId = !empty(byoHubPeSubnetId) ? byoHubPeSubnetId : effectiveJumpboxSubnetId
+
+// Peering both ways
+var wantPeering = wantHub && (hubConnectivityMode == 'peering' || hubConnectivityMode == 'both')
+module peerHubToSpoke 'modules/peering.bicep' = if (wantPeering) {
+  name: 'peer-hub-to-spoke'
+  scope: resourceGroup(hubSubId, hubRgName)
+  dependsOn: createHubVnet ? [ hubMod ] : []
+  params: {
+    localVnetName: hubVnetNameEffective
+    remoteVnetId: empty(byoVnetSubnetId) ? networkMod!.outputs.vnetId : substring(byoVnetSubnetId, 0, indexOf(byoVnetSubnetId, '/subnets/'))
+    peeringName: 'to-${vnetNameEffective}'
+  }
+}
+module peerSpokeToHub 'modules/peering.bicep' = if (wantPeering) {
+  name: 'peer-spoke-to-hub'
+  scope: resourceGroup(vnetSubId, vnetRgName)
+  dependsOn: empty(byoVnetSubnetId) ? [ networkMod ] : []
+  params: {
+    localVnetName: vnetNameEffective
+    remoteVnetId: effectiveHubVnetId
+    peeringName: 'to-${hubVnetNameEffective}'
+  }
+}
+
+// Extra DNS zone link so hub VNet resolves privatelink.<region>.azmk8s.io.
+// Needed for BOTH peering and PE modes (PE also requires the hub VNet to be
+// linked so VMs in the hub can resolve the cluster's privatelink record).
+// Only when we created the zone ourselves (BYO zone: user wires their own links).
+module hubPdnsLink 'modules/privateDnsLink.bicep' = if (wantHub && empty(byoPrivateDnsZoneId)) {
+  name: 'hubPdnsLink'
+  scope: rg
+  dependsOn: createHubVnet ? [ pdnsMod, hubMod ] : [ pdnsMod ]
+  params: {
+    privateDnsZoneName: effectivePrivateDnsZoneName
+    vnetId: effectiveHubVnetId
+    linkName: 'hub-${uniqueString(effectiveHubVnetId)}'
+    tags: tags
+  }
+}
+
+// Private Endpoint to AKS (groupId='management') in the hub VNet.
+// NOTE: PE on the 'management' groupId is for *legacy* private clusters only.
+// AKS Automatic uses API Server VNet Integration (the API server already has a
+// private NIC in snet-apiserver), which is mutually exclusive with PE — ARM
+// returns a generic InternalServerError. Skip PE whenever VNet integration is
+// active (i.e. whenever we provisioned an apiserver subnet — same predicate
+// used to set apiServerSubnetId on the cluster).
+var apiServerVnetIntegrationActive = isPrivate && empty(byoVnetSubnetId)
+var wantPe = wantHub && (hubConnectivityMode == 'privateEndpoint' || hubConnectivityMode == 'both') && !apiServerVnetIntegrationActive
+module aksPe 'modules/aksPrivateEndpoint.bicep' = if (wantPe) {
+  name: 'aksPe'
+  scope: resourceGroup(hubSubId, hubRgName)
+  params: {
+    location: location
+    peName: 'pe-${clusterName}-mgmt'
+    aksClusterId: aksMod.outputs.clusterId
+    subnetId: effectivePeSubnetId
+    privateDnsZoneId: empty(byoPrivateDnsZoneId) ? pdnsMod!.outputs.privateDnsZoneId : byoPrivateDnsZoneId
+    tags: tags
+  }
+}
+
+// Bastion
+module bastionMod 'modules/bastion.bicep' = if (wantHub && deployBastion) {
+  name: 'bastion'
+  scope: resourceGroup(hubSubId, hubRgName)
+  dependsOn: createHubVnet ? [ hubMod ] : []
+  params: {
+    location: location
+    bastionName: effectiveBastionName
+    bastionSubnetId: effectiveBastionSubnetId
+    sku: bastionSku
+    tags: tags
+  }
+}
+
+// Jumpbox VM
+module jumpboxMod 'modules/jumpbox.bicep' = if (wantHub && deployJumpbox) {
+  name: 'jumpbox'
+  scope: resourceGroup(hubSubId, hubRgName)
+  dependsOn: createHubVnet ? [ hubMod ] : []
+  params: {
+    location: location
+    vmName: effectiveJumpboxName
+    subnetId: effectiveJumpboxSubnetId
+    vmSize: jumpboxVmSize
+    adminUsername: jumpboxAdminUsername
+    sshPublicKey: jumpboxSshPublicKey
+    aksClusterId: aksMod.outputs.clusterId
+    tags: tags
+  }
+}
+
+// Grant the jumpbox managed identity AKS RBAC Cluster User so it can pull kubeconfig
+module jumpboxAksUser 'modules/roleAssignmentAks.bicep' = if (wantHub && deployJumpbox) {
+  name: 'jumpboxAksUser'
+  scope: rg
+  dependsOn: [ aksMod ]
+  params: {
+    clusterName: clusterName
+    principalId: jumpboxMod!.outputs.principalId
+    roleDefinitionId: '4abbcc35-e782-43d8-92c5-2d3f1bd2253f'
+  }
+}
+
+
+// ============================================================================
 //  Outputs
 // ============================================================================
 output resourceGroupName string = rg.name
@@ -573,3 +793,12 @@ output controlPlaneIdentityId string = identityMod.outputs.controlPlaneIdentityI
 output kubeletIdentityClientId string = identityMod.outputs.kubeletIdentityClientId
 output acrLoginServer string = acrMode == 'new' ? acrMod!.outputs.acrLoginServer : ''
 output getCredentialsCommand string = 'az aks get-credentials --resource-group ${rg.name} --name ${aksMod.outputs.clusterName} --overwrite-existing'
+
+// Hub / Bastion / Jumpbox / PE
+output hubVnetId string = wantHub ? effectiveHubVnetId : ''
+output hubResourceGroup string = wantHub ? hubRgName : ''
+output bastionName string = (wantHub && deployBastion) ? effectiveBastionName : ''
+output jumpboxName string = (wantHub && deployJumpbox) ? effectiveJumpboxName : ''
+output jumpboxPrincipalId string = (wantHub && deployJumpbox) ? jumpboxMod!.outputs.principalId : ''
+output privateEndpointId string = wantPe ? aksPe!.outputs.privateEndpointId : ''
+output bastionSshCommand string = (wantHub && deployBastion && deployJumpbox) ? 'az network bastion ssh --name ${effectiveBastionName} --resource-group ${hubRgName} --target-resource-id ${jumpboxMod!.outputs.vmId} --auth-type ssh-key --username ${jumpboxAdminUsername} --ssh-key .deploy/jumpbox_id_rsa' : ''

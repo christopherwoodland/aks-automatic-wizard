@@ -6,45 +6,65 @@
   <title>AKS Optional/BYO Wizard</title>
   <style>
     :root {
-      --bg: #f6f7f4;
+      --bg: #f5f9ff;
       --paper: #ffffff;
-      --ink: #1b2427;
-      --muted: #5c6a70;
-      --line: #d6dee0;
-      --accent: #005f73;
-      --accent2: #9b2226;
-      --ok: #166534;
-      --warn: #9a3412;
-      --err: #991b1b;
-      --shadow: 0 12px 28px rgba(25, 37, 41, 0.08);
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #dbe7fb;
+      --accent: #0f6cbd;
+      --accent-strong: #004578;
+      --accent-soft: #e8f2ff;
+      --ok: #0f6b3f;
+      --warn: #8a5a00;
+      --err: #b10e1e;
+      --shadow: 0 10px 32px rgba(15, 55, 110, 0.09);
     }
 
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--ink);
-      font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
+      font-family: "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       background:
-        radial-gradient(circle at 10% 0%, rgba(0, 95, 115, 0.15), transparent 28%),
-        radial-gradient(circle at 90% 0%, rgba(155, 34, 38, 0.12), transparent 34%),
+        radial-gradient(circle at 12% -10%, rgba(15, 108, 189, 0.18), transparent 34%),
+        radial-gradient(circle at 84% -16%, rgba(0, 69, 120, 0.16), transparent 38%),
+        linear-gradient(180deg, rgba(232, 242, 255, 0.65) 0%, rgba(245, 249, 255, 0) 28%),
         var(--bg);
+    }
+
+    .skip-link {
+      position: absolute;
+      left: 8px;
+      top: -42px;
+      padding: 8px 10px;
+      background: #0f6cbd;
+      color: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      z-index: 100;
+    }
+
+    .skip-link:focus {
+      top: 8px;
+      outline: 2px solid #fff;
+      outline-offset: 2px;
     }
 
     .container {
       max-width: 1280px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 24px;
       display: grid;
       grid-template-columns: 1.3fr 1fr;
-      gap: 16px;
+      gap: 18px;
     }
 
     .card {
       background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: 12px;
       box-shadow: var(--shadow);
-      padding: 14px;
+      padding: 16px;
     }
 
     .hero {
@@ -53,14 +73,34 @@
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      border-left: 6px solid var(--accent);
+      border-left: 5px solid var(--accent);
+      background: linear-gradient(92deg, rgba(232, 242, 255, 0.85), rgba(255, 255, 255, 0.92));
     }
 
-    h1 { margin: 0; font-size: 1.55rem; }
-    h2 { margin: 14px 0 10px; font-size: 1.08rem; }
-    h3 { margin: 10px 0 8px; font-size: 0.95rem; color: var(--muted); }
+    .hero-actions { display: flex; gap: 8px; align-items: center; }
 
-    .sub { margin: 4px 0 0; color: var(--muted); }
+    h1 {
+      margin: 0;
+      font-size: 1.58rem;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }
+
+    h2 {
+      margin: 16px 0 10px;
+      font-size: 1.05rem;
+      color: var(--accent-strong);
+      font-weight: 640;
+    }
+
+    h3 {
+      margin: 10px 0 8px;
+      font-size: 0.93rem;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .sub { margin: 4px 0 0; color: var(--muted); max-width: 78ch; }
 
     .grid {
       display: grid;
@@ -68,26 +108,35 @@
       gap: 8px;
     }
 
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stack { display: grid; gap: 8px; }
     .full { grid-column: 1 / -1; }
 
     label {
       display: block;
       margin-bottom: 4px;
       color: var(--muted);
-      font-size: 0.79rem;
+      font-size: 0.76rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       font-weight: 700;
     }
 
     input, select, textarea {
       width: 100%;
-      border: 1px solid #c8d1d4;
-      border-radius: 10px;
+      border: 1px solid #bdd2f3;
+      border-radius: 8px;
       background: #fff;
       color: var(--ink);
       font: inherit;
-      padding: 8px 9px;
+      padding: 9px 10px;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.2);
     }
 
     textarea {
@@ -99,14 +148,15 @@
 
     .checks { display: flex; flex-wrap: wrap; gap: 8px; }
     .mt8 { margin-top: 8px; }
+
     .check {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      border: 1px dashed #cbd5d9;
+      border: 1px solid #cfe0fb;
       padding: 4px 8px;
       border-radius: 999px;
-      background: #fff;
+      background: #f8fbff;
       font-size: 0.9rem;
     }
 
@@ -119,39 +169,106 @@
     }
 
     .ok { color: var(--ok); border-color: #8fd8a8; background: #ebfbf1; }
-    .warn { color: var(--warn); border-color: #f0bc8d; background: #fff5eb; }
-    .err { color: var(--err); border-color: #f2aaaa; background: #fff0f0; }
+    .warn { color: var(--warn); border-color: #efcf8a; background: #fff8e8; }
+    .err { color: var(--err); border-color: #efb5bd; background: #fff2f4; }
 
     .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
     .preset {
-      border: 1px solid #b8c6cb;
-      background: #f8fbfc;
-      color: #0f2a33;
-      border-radius: 10px;
+      border: 1px solid #b9d0f5;
+      background: #f3f8ff;
+      color: #0d3f73;
+      border-radius: 8px;
       padding: 8px 10px;
       font-weight: 700;
       cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease;
     }
+
+    .preset:hover { background: #e8f2ff; border-color: #8fb5ee; }
+
     button {
-      border: 0;
-      border-radius: 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
       padding: 9px 12px;
       color: #fff;
       background: var(--accent);
       font-weight: 700;
       cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease;
     }
+
+    button:hover { background: #105fa4; }
     button.alt { background: #334155; }
-    button.warn { background: var(--accent2); }
+    button.alt:hover { background: #253246; }
+    button.warn { background: #a4262c; }
+    button.warn:hover { background: #8e1f24; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
 
     .hint { color: var(--muted); font-size: 0.84rem; margin-top: 6px; }
 
+    .wizard-steps {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .step-chip {
+      border: 1px solid #bcd3f5;
+      background: #f4f8ff;
+      color: #23496d;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 0.8rem;
+      text-align: left;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .step-chip.active {
+      background: #0f6cbd;
+      color: #ffffff;
+      border-color: #0f6cbd;
+    }
+
+    .step-chip.done {
+      background: #e8f7ee;
+      border-color: #8fd8a8;
+      color: #0f6b3f;
+    }
+
+    .wizard-step { display: none; }
+    .wizard-step.active { display: block; }
+
+    .wizard-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    .field-error {
+      margin-top: 4px;
+      color: var(--err);
+      font-size: 0.78rem;
+      min-height: 1.1em;
+    }
+
+    .is-invalid {
+      border-color: #d13438 !important;
+      box-shadow: 0 0 0 3px rgba(209, 52, 56, 0.18) !important;
+    }
+
     pre {
       margin: 0;
-      border: 1px solid #d3d8db;
-      border-radius: 10px;
-      background: #111827;
-      color: #e5e7eb;
+      border: 1px solid #c7dbfa;
+      border-radius: 8px;
+      background: #082544;
+      color: #dbeaff;
       padding: 11px;
       white-space: pre-wrap;
       word-break: break-word;
@@ -161,186 +278,305 @@
       font-size: 0.83rem;
     }
 
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .stack { display: grid; gap: 8px; }
+    .hidden { display: none !important; }
+
+    .help-panel h2 { margin-top: 0; }
+    .help-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .help-group {
+      border: 1px solid #dbe7fb;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fbfdff;
+    }
+
+    .help-group h3 {
+      margin-top: 0;
+      color: var(--accent-strong);
+    }
+
+    .help-list {
+      margin: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .help-list dt {
+      font-weight: 700;
+      color: #12385f;
+      font-size: 0.86rem;
+    }
+
+    .help-list dd {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #0f6cbd;
+      color: #fff;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.84rem;
+      box-shadow: 0 10px 24px rgba(15, 55, 110, 0.25);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 140ms ease, transform 140ms ease;
+      z-index: 50;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+      white-space: nowrap;
+    }
 
     @media (max-width: 1020px) {
       .container { grid-template-columns: 1fr; }
       .split { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
+      .wizard-steps { grid-template-columns: 1fr 1fr; }
+      .help-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <main class="container">
+  <a class="skip-link" href="#wizardMain">Skip to wizard</a>
+
+  <main id="wizardMain" class="container">
     <section class="card hero">
       <div>
         <h1>AKS Optional / BYO Deployment Wizard</h1>
         <p class="sub">Build deploy commands with optional resources and bring-your-own IDs where supported by this template.</p>
       </div>
-      <span id="status" class="pill ok">Ready</span>
+      <div class="hero-actions">
+        <button type="button" class="alt" id="btnHelpToggle" aria-expanded="false" aria-controls="helpPanel">Help: Explain Options</button>
+      </div>
+      <span id="status" class="pill ok" role="status" aria-live="polite" aria-atomic="true">Ready</span>
     </section>
 
     <section class="card">
-      <h2>Core</h2>
-      <div class="grid">
-        <div>
-          <label for="subId">Subscription ID</label>
-          <input id="subId" placeholder="6bf68138-..." />
-        </div>
-        <div>
-          <label for="location">Location</label>
-          <input id="location" value="swedencentral" />
-        </div>
-        <div>
-          <label for="mode">Mode</label>
-          <select id="mode">
-            <option value="automaticManaged">automaticManaged</option>
-            <option value="automaticPrivate" selected>automaticPrivate</option>
-          </select>
-        </div>
-        <div>
-          <label for="stage">Stage</label>
-          <select id="stage">
-            <option>All</option>
-            <option>Preflight</option>
-            <option>Plan</option>
-            <option selected>Deploy</option>
-            <option>Smoke</option>
-          </select>
-        </div>
-        <div>
-          <label for="workload">Workload Name</label>
-          <input id="workload" value="aks" />
-        </div>
-        <div>
-          <label for="envName">Environment Name</label>
-          <input id="envName" value="dev" />
-        </div>
-      </div>
-      <div class="checks mt8">
-        <label class="check"><input type="checkbox" id="autoName" /> AutoName</label>
-        <label class="check"><input type="checkbox" id="interactive" /> Interactive</label>
-        <label class="check"><input type="checkbox" id="resume" /> Resume</label>
-        <label class="check"><input type="checkbox" id="skipWhatIf" checked /> SkipWhatIf</label>
+      <div class="wizard-steps" id="wizardSteps" aria-label="Wizard steps" role="tablist">
+        <button type="button" id="stepChip1" class="step-chip" data-step="0" role="tab" aria-controls="step1">1. Core</button>
+        <button type="button" id="stepChip2" class="step-chip" data-step="1" role="tab" aria-controls="step2">2. Features</button>
+        <button type="button" id="stepChip3" class="step-chip" data-step="2" role="tab" aria-controls="step3">3. Network</button>
+        <button type="button" id="stepChip4" class="step-chip" data-step="3" role="tab" aria-controls="step4">4. Access</button>
+        <button type="button" id="stepChip5" class="step-chip" data-step="4" role="tab" aria-controls="step5">5. Review</button>
       </div>
 
-      <h2>Presets</h2>
-      <div class="btns">
-        <button type="button" class="preset" id="btnPresetMin">1) Minimum Cost</button>
-        <button type="button" class="preset" id="btnPresetEnt">2) Private Enterprise</button>
-        <button type="button" class="preset" id="btnPresetByo">3) BYO Everything</button>
-      </div>
-      <p class="hint">Presets fill the form. You can still tweak any field after applying one.</p>
-
-      <h2>Optional Features</h2>
-      <div class="checks">
-        <label class="check"><input type="checkbox" id="enableLaw" checked /> Container Insights (LAW)</label>
-        <label class="check"><input type="checkbox" id="enableAmw" checked /> Azure Monitor Workspace</label>
-        <label class="check"><input type="checkbox" id="enableGrafana" /> Managed Grafana</label>
-      </div>
-
-      <h2>ACR</h2>
-      <div class="grid">
-        <div>
-          <label for="acrMode">ACR Mode</label>
-          <select id="acrMode">
-            <option value="none" selected>none</option>
-            <option value="new">new</option>
-            <option value="existing">existing</option>
-          </select>
-        </div>
-        <div>
-          <label for="acrName">New ACR Name (when mode=new)</label>
-          <input id="acrName" placeholder="acrmyteam" />
-        </div>
-        <div class="full">
-          <label for="existingAcrIds">Existing ACR IDs (one per line)</label>
-          <textarea id="existingAcrIds" placeholder="/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr1"></textarea>
-        </div>
-      </div>
-
-      <h2>Private Network (BYO supported)</h2>
-      <div class="split">
-        <div class="stack">
-          <h3>Spoke / AKS side</h3>
+      <div id="step1" class="wizard-step active" data-step-index="0" role="tabpanel" aria-labelledby="stepChip1">
+        <h2>Step 1: Core</h2>
+        <p class="hint">Start with deployment basics and an optional preset.</p>
+        <div class="grid">
           <div>
-            <label for="byoVnetSubnetId">BYO AKS Subnet ID</label>
-            <input id="byoVnetSubnetId" placeholder="/subscriptions/.../subnets/snet-aks" />
+            <label for="subId">Subscription ID</label>
+            <input id="subId" placeholder="6bf68138-..." required aria-describedby="subIdErr" />
+            <div id="subIdErr" class="field-error" aria-live="polite"></div>
           </div>
           <div>
-            <label for="byoPodSubnetId">BYO Pod Subnet ID (optional)</label>
-            <input id="byoPodSubnetId" placeholder="/subscriptions/.../subnets/snet-pods" />
+            <label for="location">Location</label>
+            <input id="location" value="swedencentral" required aria-describedby="locationErr" />
+            <div id="locationErr" class="field-error" aria-live="polite"></div>
           </div>
           <div>
-            <label for="byoPrivateDnsZoneId">BYO Private DNS Zone ID</label>
-            <input id="byoPrivateDnsZoneId" placeholder="/subscriptions/.../privateDnsZones/privatelink.<region>.azmk8s.io" />
-          </div>
-        </div>
-        <div class="stack">
-          <h3>Hub / Access side</h3>
-          <div>
-            <label for="hubMode">Hub Connectivity Mode</label>
-            <select id="hubMode">
-              <option value="none">none</option>
-              <option value="peering" selected>peering</option>
-              <option value="privateEndpoint">privateEndpoint</option>
-              <option value="both">both</option>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="automaticManaged">automaticManaged</option>
+              <option value="automaticPrivate" selected>automaticPrivate</option>
             </select>
           </div>
           <div>
-            <label for="hubVnetId">BYO Hub VNet ID</label>
-            <input id="hubVnetId" placeholder="/subscriptions/.../virtualNetworks/vnet-hub" />
+            <label for="stage">Stage</label>
+            <select id="stage">
+              <option>All</option>
+              <option>Preflight</option>
+              <option>Plan</option>
+              <option selected>Deploy</option>
+              <option>Smoke</option>
+            </select>
           </div>
           <div>
-            <label for="byoHubBastionSubnetId">BYO Hub Bastion Subnet ID</label>
-            <input id="byoHubBastionSubnetId" placeholder="/subscriptions/.../subnets/AzureBastionSubnet" />
+            <label for="workload">Workload Name</label>
+            <input id="workload" value="aks" />
           </div>
           <div>
-            <label for="byoHubJumpboxSubnetId">BYO Hub Jumpbox Subnet ID</label>
-            <input id="byoHubJumpboxSubnetId" placeholder="/subscriptions/.../subnets/snet-jumpbox" />
+            <label for="envName">Environment Name</label>
+            <input id="envName" value="dev" />
+          </div>
+        </div>
+
+        <div class="checks mt8">
+          <label class="check"><input type="checkbox" id="autoName" /> AutoName</label>
+          <label class="check"><input type="checkbox" id="interactive" /> Interactive</label>
+          <label class="check"><input type="checkbox" id="resume" /> Resume</label>
+          <label class="check"><input type="checkbox" id="skipWhatIf" checked /> SkipWhatIf</label>
+        </div>
+
+        <h3>Presets</h3>
+        <div class="btns">
+          <button type="button" class="preset" id="btnPresetMin">1) Minimum Cost</button>
+          <button type="button" class="preset" id="btnPresetEnt">2) Private Enterprise</button>
+          <button type="button" class="preset" id="btnPresetByo">3) BYO Everything</button>
+        </div>
+        <p class="hint">Presets fill the form. You can still tweak any field after applying one.</p>
+      </div>
+
+      <div id="step2" class="wizard-step" data-step-index="1" role="tabpanel" aria-labelledby="stepChip2">
+        <h2>Step 2: Features & ACR</h2>
+        <p class="hint">Choose observability and container registry options.</p>
+
+        <h3>Optional Features</h3>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="enableLaw" checked /> Container Insights (LAW)</label>
+          <label class="check"><input type="checkbox" id="enableAmw" checked /> Azure Monitor Workspace</label>
+          <label class="check"><input type="checkbox" id="enableGrafana" /> Managed Grafana</label>
+        </div>
+
+        <h3>ACR</h3>
+        <div class="grid">
+          <div>
+            <label for="acrMode">ACR Mode</label>
+            <select id="acrMode">
+              <option value="none" selected>none</option>
+              <option value="new">new</option>
+              <option value="existing">existing</option>
+            </select>
           </div>
           <div>
-            <label for="byoHubPeSubnetId">BYO Hub PE Subnet ID</label>
-            <input id="byoHubPeSubnetId" placeholder="/subscriptions/.../subnets/snet-pe" />
+            <label for="acrName">New ACR Name (when mode=new)</label>
+            <input id="acrName" placeholder="acrmyteam" aria-describedby="acrNameErr" />
+            <div id="acrNameErr" class="field-error" aria-live="polite"></div>
+          </div>
+          <div class="full">
+            <label for="existingAcrIds">Existing ACR IDs (one per line)</label>
+            <textarea id="existingAcrIds" placeholder="/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr1" aria-describedby="existingAcrIdsErr"></textarea>
+            <div id="existingAcrIdsErr" class="field-error" aria-live="polite"></div>
           </div>
         </div>
       </div>
 
-      <h2>Bastion / Jumpbox</h2>
-      <div class="grid">
-        <div>
-          <label for="bastionSku">Bastion SKU</label>
-          <select id="bastionSku">
-            <option>Basic</option>
-            <option selected>Standard</option>
-            <option>Developer</option>
-          </select>
-        </div>
-        <div>
-          <label for="jumpboxKeyPath">Jumpbox SSH Key Path</label>
-          <input id="jumpboxKeyPath" value=".deploy\\jumpbox_id_rsa" />
+      <div id="step3" class="wizard-step" data-step-index="2" role="tabpanel" aria-labelledby="stepChip3">
+        <h2>Step 3: Private Network (BYO supported)</h2>
+        <p class="hint">Set BYO resources for spoke and hub networking when needed.</p>
+        <div class="split">
+          <div class="stack">
+            <h3>Spoke / AKS side</h3>
+            <div>
+              <label for="byoVnetSubnetId">BYO AKS Subnet ID</label>
+              <input id="byoVnetSubnetId" placeholder="/subscriptions/.../subnets/snet-aks" />
+            </div>
+            <div>
+              <label for="byoPodSubnetId">BYO Pod Subnet ID (optional)</label>
+              <input id="byoPodSubnetId" placeholder="/subscriptions/.../subnets/snet-pods" />
+            </div>
+            <div>
+              <label for="byoPrivateDnsZoneId">BYO Private DNS Zone ID</label>
+              <input id="byoPrivateDnsZoneId" placeholder="/subscriptions/.../privateDnsZones/privatelink.<region>.azmk8s.io" />
+            </div>
+          </div>
+          <div class="stack">
+            <h3>Hub / Access side</h3>
+            <div>
+              <label for="hubMode">Hub Connectivity Mode</label>
+              <select id="hubMode">
+                <option value="none">none</option>
+                <option value="peering" selected>peering</option>
+                <option value="privateEndpoint">privateEndpoint</option>
+                <option value="both">both</option>
+              </select>
+            </div>
+            <div>
+              <label for="hubVnetId">BYO Hub VNet ID</label>
+              <input id="hubVnetId" placeholder="/subscriptions/.../virtualNetworks/vnet-hub" />
+            </div>
+            <div>
+              <label for="byoHubBastionSubnetId">BYO Hub Bastion Subnet ID</label>
+              <input id="byoHubBastionSubnetId" placeholder="/subscriptions/.../subnets/AzureBastionSubnet" aria-describedby="byoHubBastionSubnetIdErr" />
+              <div id="byoHubBastionSubnetIdErr" class="field-error" aria-live="polite"></div>
+            </div>
+            <div>
+              <label for="byoHubJumpboxSubnetId">BYO Hub Jumpbox Subnet ID</label>
+              <input id="byoHubJumpboxSubnetId" placeholder="/subscriptions/.../subnets/snet-jumpbox" aria-describedby="byoHubJumpboxSubnetIdErr" />
+              <div id="byoHubJumpboxSubnetIdErr" class="field-error" aria-live="polite"></div>
+            </div>
+            <div>
+              <label for="byoHubPeSubnetId">BYO Hub PE Subnet ID</label>
+              <input id="byoHubPeSubnetId" placeholder="/subscriptions/.../subnets/snet-pe" />
+            </div>
+          </div>
         </div>
       </div>
-      <div class="checks mt8">
-        <label class="check"><input type="checkbox" id="deployBastion" checked /> Deploy Bastion</label>
-        <label class="check"><input type="checkbox" id="deployJumpbox" checked /> Deploy Jumpbox</label>
+
+      <div id="step4" class="wizard-step" data-step-index="3" role="tabpanel" aria-labelledby="stepChip4">
+        <h2>Step 4: Access & Overrides</h2>
+        <p class="hint">Configure Bastion, jumpbox, and any final override entries.</p>
+
+        <h3>Bastion / Jumpbox</h3>
+        <div class="grid">
+          <div>
+            <label for="bastionSku">Bastion SKU</label>
+            <select id="bastionSku">
+              <option>Basic</option>
+              <option selected>Standard</option>
+              <option>Developer</option>
+            </select>
+          </div>
+          <div>
+            <label for="jumpboxKeyPath">Jumpbox SSH Key Path</label>
+            <input id="jumpboxKeyPath" value=".deploy\\jumpbox_id_rsa" />
+          </div>
+        </div>
+
+        <div class="checks mt8">
+          <label class="check"><input type="checkbox" id="deployBastion" checked /> Deploy Bastion</label>
+          <label class="check"><input type="checkbox" id="deployJumpbox" checked /> Deploy Jumpbox</label>
+        </div>
+
+        <h3>Explicit Overrides (append)</h3>
+        <label for="manualOverrides">Raw hashtable body to append (optional)</label>
+        <textarea id="manualOverrides" placeholder="clusterAdminGroupObjectIds=@('guid1','guid2')"></textarea>
       </div>
 
-      <h2>Explicit Overrides (append)</h2>
-      <label for="manualOverrides">Raw hashtable body to append (optional)</label>
-      <textarea id="manualOverrides" placeholder="clusterAdminGroupObjectIds=@('guid1','guid2')"></textarea>
+      <div id="step5" class="wizard-step" data-step-index="4" role="tabpanel" aria-labelledby="stepChip5">
+        <h2>Step 5: Review & Generate</h2>
+        <p class="hint">Generate and copy commands after reviewing validation output in the panel on the right.</p>
+        <div class="btns">
+          <button id="btnGenerate" type="button">Generate</button>
+          <button type="button" class="alt" id="btnCopyPs1">Copy deploy.ps1</button>
+          <button type="button" class="warn" id="btnCopyAz">Copy az command</button>
+        </div>
+      </div>
 
-      <div class="btns">
-        <button id="btnGenerate">Generate</button>
-        <button class="alt" id="btnCopyPs1">Copy deploy.ps1</button>
-        <button class="warn" id="btnCopyAz">Copy az command</button>
+      <div class="wizard-nav">
+        <button type="button" class="alt" id="btnPrev">Back</button>
+        <div class="hint" id="stepHint" role="status" aria-live="polite" aria-atomic="true">Step 1 of 5</div>
+        <button type="button" id="btnNext">Next</button>
       </div>
     </section>
 
-    <section class="card">
+    <section id="resultsCard" class="card hidden" aria-hidden="true">
       <h2>Validation</h2>
-      <div id="validation" class="hint">No issues.</div>
+      <div id="validation" class="hint" role="status" aria-live="polite" aria-atomic="true">No issues.</div>
 
       <h2>Auto-generated Overrides</h2>
       <pre id="overridesOut"></pre>
@@ -356,15 +592,103 @@
         Use peering + DNS link as the primary pattern.
       </p>
     </section>
+
+    <section id="helpPanel" class="card help-panel hidden" aria-hidden="true" aria-labelledby="helpPanelTitle" tabindex="-1">
+      <h2 id="helpPanelTitle">Wizard Option Help</h2>
+      <p class="hint">Use this reference to understand what each option does before generating commands.</p>
+
+      <div class="help-grid">
+        <article class="help-group">
+          <h3>Step 1: Core</h3>
+          <dl class="help-list">
+            <dt>Subscription ID</dt><dd>Azure subscription where deployment runs.</dd>
+            <dt>Location</dt><dd>Region for deployment metadata and regional resources.</dd>
+            <dt>Mode</dt><dd><code>automaticManaged</code> for simpler defaults, <code>automaticPrivate</code> for private AKS patterns.</dd>
+            <dt>Stage</dt><dd>Choose how far the script runs: Preflight, Plan, Deploy, Smoke, or All.</dd>
+            <dt>Workload Name / Environment Name</dt><dd>Naming inputs used to derive resource name defaults.</dd>
+            <dt>AutoName</dt><dd>Generates names automatically to reduce manual naming work.</dd>
+            <dt>Interactive</dt><dd>Prompts for inputs during execution instead of non-interactive run.</dd>
+            <dt>Resume</dt><dd>Continues from a prior interrupted deployment state.</dd>
+            <dt>SkipWhatIf</dt><dd>Skips the <code>what-if</code> planning phase for faster deployment.</dd>
+          </dl>
+        </article>
+
+        <article class="help-group">
+          <h3>Step 2: Features and ACR</h3>
+          <dl class="help-list">
+            <dt>Container Insights (LAW)</dt><dd>Enables/creates Log Analytics workspace usage for AKS monitoring.</dd>
+            <dt>Azure Monitor Workspace</dt><dd>Enables Azure Monitor workspace integration.</dd>
+            <dt>Managed Grafana</dt><dd>Enables Azure Managed Grafana for dashboards.</dd>
+            <dt>ACR Mode: none</dt><dd>No container registry integration changes.</dd>
+            <dt>ACR Mode: new</dt><dd>Creates a new ACR; requires <code>acrName</code>.</dd>
+            <dt>ACR Mode: existing</dt><dd>Uses one or more existing ACR resource IDs.</dd>
+            <dt>Existing ACR IDs</dt><dd>One full resource ID per line when <code>ACR mode=existing</code>.</dd>
+          </dl>
+        </article>
+
+        <article class="help-group">
+          <h3>Step 3: Network and BYO</h3>
+          <dl class="help-list">
+            <dt>BYO AKS Subnet ID</dt><dd>Existing subnet for AKS nodes in private/BYO network patterns.</dd>
+            <dt>BYO Pod Subnet ID</dt><dd>Optional dedicated subnet for pods.</dd>
+            <dt>BYO Private DNS Zone ID</dt><dd>Existing private DNS zone for private API server name resolution.</dd>
+            <dt>Hub Connectivity Mode</dt><dd><code>none</code>, <code>peering</code>, <code>privateEndpoint</code>, or <code>both</code> for hub pattern selection.</dd>
+            <dt>BYO Hub VNet ID</dt><dd>Existing hub VNet to connect with spoke/AKS resources.</dd>
+            <dt>BYO Hub Bastion/Jumpbox/PE Subnet IDs</dt><dd>Specific existing subnets in hub VNet used by Bastion, jumpbox, and private endpoint.</dd>
+          </dl>
+        </article>
+
+        <article class="help-group">
+          <h3>Step 4: Access and Overrides</h3>
+          <dl class="help-list">
+            <dt>Bastion SKU</dt><dd>SKU for Azure Bastion deployment (for SSH/RDP access patterns).</dd>
+            <dt>Jumpbox SSH Key Path</dt><dd>Private key path used for jumpbox SSH-related command generation.</dd>
+            <dt>Deploy Bastion</dt><dd>Controls whether Bastion resources are deployed.</dd>
+            <dt>Deploy Jumpbox</dt><dd>Controls whether the Linux jumpbox VM is deployed.</dd>
+            <dt>Raw hashtable body (manualOverrides)</dt><dd>Advanced append-only PowerShell override entries not directly exposed in the UI.</dd>
+          </dl>
+        </article>
+      </div>
+    </section>
   </main>
 
+  <div id="copyToast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="a11yErrors" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></div>
+
   <script>
+    const STORAGE_KEY = 'aks_wizard_state_v2';
+    const FORM_FIELD_IDS = [
+      'subId', 'location', 'mode', 'stage', 'workload', 'envName', 'autoName', 'interactive', 'resume', 'skipWhatIf',
+      'enableLaw', 'enableAmw', 'enableGrafana', 'acrMode', 'acrName', 'existingAcrIds',
+      'byoVnetSubnetId', 'byoPodSubnetId', 'byoPrivateDnsZoneId',
+      'hubMode', 'hubVnetId', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId', 'byoHubPeSubnetId',
+      'deployBastion', 'deployJumpbox', 'bastionSku', 'jumpboxKeyPath', 'manualOverrides'
+    ];
+
     const el = (id) => document.getElementById(id);
+    const stepPanels = Array.from(document.querySelectorAll('.wizard-step'));
+    const stepChips = Array.from(document.querySelectorAll('.step-chip'));
+    const totalSteps = stepPanels.length;
+    let currentStep = 0;
+
     const q = (id) => {
       const n = el(id);
       if (!n) return '';
       return n.type === 'checkbox' ? n.checked : n.value.trim();
     };
+
+    function toggleHelp(forceOpen) {
+      const panel = el('helpPanel');
+      const btn = el('btnHelpToggle');
+      if (!panel || !btn) return;
+      const isHidden = panel.classList.contains('hidden');
+      const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : isHidden;
+      panel.classList.toggle('hidden', !shouldOpen);
+      panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+      btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+      btn.textContent = shouldOpen ? 'Hide Help' : 'Help: Explain Options';
+      if (shouldOpen) panel.focus();
+    }
 
     function setStatus(kind, text) {
       const n = el('status');
@@ -395,6 +719,191 @@
       const n = el(id);
       if (!n) return;
       n.checked = value;
+    }
+
+    function setFieldError(fieldId, message) {
+      const input = el(fieldId);
+      const msgNode = el(fieldId + 'Err');
+      if (msgNode) msgNode.textContent = message || '';
+      if (!input) return;
+      const hasError = Boolean(message);
+      input.classList.toggle('is-invalid', hasError);
+      input.setAttribute('aria-invalid', hasError ? 'true' : 'false');
+    }
+
+    function clearFieldErrors() {
+      ['subId', 'location', 'acrName', 'existingAcrIds', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId'].forEach((id) => {
+        setFieldError(id, '');
+      });
+    }
+
+    function validateStep(index) {
+      const details = { issues: [], fieldErrors: {} };
+
+      if (index === 0) {
+        if (!q('subId')) {
+          details.issues.push('Subscription ID is required before moving forward.');
+          details.fieldErrors.subId = 'Subscription ID is required.';
+        }
+        if (!q('location')) {
+          details.issues.push('Location is required before moving forward.');
+          details.fieldErrors.location = 'Location is required.';
+        }
+      }
+
+      if (index === 1) {
+        const acrMode = q('acrMode');
+        if (acrMode === 'new' && !q('acrName')) {
+          details.issues.push('ACR mode=new requires acrName.');
+          details.fieldErrors.acrName = 'ACR name is required when ACR mode is new.';
+        }
+        if (acrMode === 'existing' && !linesToPsArray(q('existingAcrIds'))) {
+          details.issues.push('ACR mode=existing requires at least one existing ACR ID.');
+          details.fieldErrors.existingAcrIds = 'Add at least one existing ACR ID.';
+        }
+      }
+
+      if (index === 2) {
+        const hubVnetId = q('hubVnetId');
+        if (hubVnetId && q('deployBastion') && !q('byoHubBastionSubnetId')) {
+          details.issues.push('BYO hub + Bastion requires byoHubBastionSubnetId.');
+          details.fieldErrors.byoHubBastionSubnetId = 'Bastion subnet is required when BYO hub and Bastion are enabled.';
+        }
+        if (hubVnetId && q('deployJumpbox') && !q('byoHubJumpboxSubnetId')) {
+          details.issues.push('BYO hub + Jumpbox requires byoHubJumpboxSubnetId.');
+          details.fieldErrors.byoHubJumpboxSubnetId = 'Jumpbox subnet is required when BYO hub and Jumpbox are enabled.';
+        }
+      }
+
+      return details;
+    }
+
+    function persistState() {
+      const values = {};
+      FORM_FIELD_IDS.forEach((id) => {
+        const node = el(id);
+        if (!node) return;
+        values[id] = node.type === 'checkbox' ? node.checked : node.value;
+      });
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentStep, values }));
+      } catch (_) {
+        // Storage may be unavailable (private mode/policy); keep wizard functional.
+      }
+    }
+
+    function restoreState() {
+      let raw = null;
+      try {
+        raw = localStorage.getItem(STORAGE_KEY);
+      } catch (_) {
+        return;
+      }
+      if (!raw) return;
+
+      try {
+        const parsed = JSON.parse(raw);
+        const values = parsed && parsed.values ? parsed.values : {};
+        FORM_FIELD_IDS.forEach((id) => {
+          const node = el(id);
+          if (!node || !(id in values)) return;
+          if (node.type === 'checkbox') node.checked = Boolean(values[id]);
+          else node.value = String(values[id]);
+        });
+        if (typeof parsed.currentStep === 'number') {
+          currentStep = Math.max(0, Math.min(totalSteps - 1, parsed.currentStep));
+        }
+      } catch (_) {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (_) {
+          // Ignore storage cleanup failures.
+        }
+      }
+    }
+
+    function showToast(message) {
+      const toast = el('copyToast');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+
+    function updateStepControls() {
+      clearFieldErrors();
+      const currentValidation = validateStep(currentStep);
+
+      Object.keys(currentValidation.fieldErrors).forEach((fieldId) => {
+        setFieldError(fieldId, currentValidation.fieldErrors[fieldId]);
+      });
+
+      const next = el('btnNext');
+      const canAdvance = currentValidation.issues.length === 0;
+      if (next) {
+        next.disabled = currentStep < totalSteps - 1 ? !canAdvance : false;
+        next.setAttribute('aria-disabled', next.disabled ? 'true' : 'false');
+      }
+
+      const live = el('a11yErrors');
+      if (live) live.textContent = currentValidation.issues.join(' ');
+    }
+
+    function syncWizardUI(message) {
+      stepPanels.forEach((panel, idx) => panel.classList.toggle('active', idx === currentStep));
+      stepChips.forEach((chip, idx) => {
+        chip.classList.toggle('active', idx === currentStep);
+        chip.classList.toggle('done', idx < currentStep);
+        chip.setAttribute('aria-selected', idx === currentStep ? 'true' : 'false');
+        chip.setAttribute('tabindex', idx === currentStep ? '0' : '-1');
+        if (idx === currentStep) chip.setAttribute('aria-current', 'step');
+        else chip.removeAttribute('aria-current');
+      });
+
+      const prev = el('btnPrev');
+      const next = el('btnNext');
+      const hint = el('stepHint');
+      const results = el('resultsCard');
+      if (prev) prev.disabled = currentStep === 0;
+      if (next) next.textContent = currentStep === totalSteps - 1 ? 'Finish' : 'Next';
+      if (hint) hint.textContent = message || `Step ${currentStep + 1} of ${totalSteps}`;
+      if (results) {
+        const showResults = currentStep === totalSteps - 1;
+        results.classList.toggle('hidden', !showResults);
+        results.setAttribute('aria-hidden', showResults ? 'false' : 'true');
+      }
+
+      updateStepControls();
+      persistState();
+    }
+
+    function goToStep(targetIndex, enforceForwardValidation = true) {
+      const target = Math.max(0, Math.min(totalSteps - 1, targetIndex));
+
+      if (enforceForwardValidation && target > currentStep) {
+        for (let i = currentStep; i < target; i++) {
+          const details = validateStep(i);
+          if (details.issues.length) {
+            setStatus('err', 'Fix Required Fields');
+            syncWizardUI(details.issues.join(' '));
+            return;
+          }
+        }
+      }
+
+      currentStep = target;
+      syncWizardUI();
+      build();
+    }
+
+    function moveStep(delta) {
+      if (delta > 0 && currentStep === totalSteps - 1) {
+        build();
+        syncWizardUI('Finished. Use the buttons in Step 5 to copy commands.');
+        return;
+      }
+      goToStep(currentStep + delta, delta > 0);
     }
 
     function applyPreset(kind) {
@@ -453,6 +962,8 @@
       }
 
       build();
+      persistState();
+      updateStepControls();
     }
 
     function build() {
@@ -596,34 +1107,89 @@
       if (issues.length) setStatus('err', 'Validation Errors');
       else if (warns.length) setStatus('warn', 'Ready (Warnings)');
       else setStatus('ok', 'Ready');
+
+      updateStepControls();
+      persistState();
     }
 
     async function copyText(nodeId) {
       const txt = el(nodeId).textContent;
       if (!txt) return;
-      await navigator.clipboard.writeText(txt);
+      try {
+        await navigator.clipboard.writeText(txt);
+        showToast('Copied to clipboard.');
+      } catch (_) {
+        showToast('Copy failed. Please copy manually.');
+      }
     }
 
     el('btnGenerate').addEventListener('click', build);
+    el('btnPrev').addEventListener('click', () => moveStep(-1));
+    el('btnNext').addEventListener('click', () => moveStep(1));
     el('btnCopyPs1').addEventListener('click', () => copyText('ps1Out'));
     el('btnCopyAz').addEventListener('click', () => copyText('azOut'));
     el('btnPresetMin').addEventListener('click', () => applyPreset('minimumCost'));
     el('btnPresetEnt').addEventListener('click', () => applyPreset('privateEnterprise'));
     el('btnPresetByo').addEventListener('click', () => applyPreset('byoEverything'));
+    el('btnHelpToggle').addEventListener('click', () => toggleHelp());
 
-    [
-      'subId','location','mode','stage','workload','envName','autoName','interactive','resume','skipWhatIf',
-      'enableLaw','enableAmw','enableGrafana','acrMode','acrName','existingAcrIds',
-      'byoVnetSubnetId','byoPodSubnetId','byoPrivateDnsZoneId',
-      'hubMode','hubVnetId','byoHubBastionSubnetId','byoHubJumpboxSubnetId','byoHubPeSubnetId',
-      'deployBastion','deployJumpbox','bastionSku','jumpboxKeyPath','manualOverrides'
-    ].forEach(id => {
+    stepChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const idx = Number(chip.getAttribute('data-step'));
+        goToStep(Number.isNaN(idx) ? 0 : idx, true);
+      });
+
+      chip.addEventListener('keydown', (evt) => {
+        if (evt.key === 'Home') {
+          evt.preventDefault();
+          goToStep(0, false);
+          return;
+        }
+
+        if (evt.key === 'End') {
+          evt.preventDefault();
+          goToStep(totalSteps - 1, false);
+          return;
+        }
+
+        if (evt.key === 'ArrowRight') {
+          evt.preventDefault();
+          goToStep(Math.min(totalSteps - 1, currentStep + 1), false);
+        }
+        if (evt.key === 'ArrowLeft') {
+          evt.preventDefault();
+          goToStep(Math.max(0, currentStep - 1), false);
+        }
+      });
+    });
+
+    FORM_FIELD_IDS.forEach((id) => {
       const n = el(id);
       if (!n) return;
       n.addEventListener('change', build);
       n.addEventListener('keyup', build);
+      n.addEventListener('change', persistState);
     });
 
+    document.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Escape' && el('helpPanel') && !el('helpPanel').classList.contains('hidden')) {
+        toggleHelp(false);
+        return;
+      }
+
+      const t = evt.target;
+      if (!t) return;
+      const tag = String(t.tagName || '').toLowerCase();
+      if (tag !== 'input' && tag !== 'select') return;
+      if (t.id === 'manualOverrides') return;
+      if (evt.key !== 'Enter' || evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return;
+      if (currentStep >= totalSteps - 1) return;
+      evt.preventDefault();
+      moveStep(1);
+    });
+
+    restoreState();
+    syncWizardUI();
     build();
   </script>
 </body>

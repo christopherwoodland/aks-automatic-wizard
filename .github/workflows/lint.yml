@@ -46,3 +46,26 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: Run shellcheck
         run: shellcheck infra/aks/deploy.sh
+
+  accessibility:
+    name: Wizard accessibility (axe)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start local static server
+        run: |
+          python3 -m http.server 4173 --directory infra/aks > /tmp/http-server.log 2>&1 &
+      - name: Wait for server
+        run: |
+          for i in {1..20}; do
+            if curl -sSf http://127.0.0.1:4173/wizard/index.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "wizard server failed to start"
+          cat /tmp/http-server.log || true
+          exit 1
+      - name: Run axe-core CLI
+        run: |
+          npx --yes @axe-core/cli http://127.0.0.1:4173/wizard/index.html --exit

@@ -24,6 +24,7 @@ staged PowerShell/Bash driver.
     ├── main.bicepparam                # all parameters (override anything you want)
     ├── deploy.ps1                     # progressive driver (Windows / PS Core)
     ├── deploy.sh                      # progressive driver (Linux/macOS)
+    ├── connect-aks.ps1                # post-deploy AKS connect helper (private/public)
     ├── deploy-wizard.ps1              # launches browser-based command wizard UI
     ├── wizard/
     │   └── index.html                 # user-friendly deployment wizard
@@ -89,13 +90,17 @@ cd infra/aks
 
 ### Option B2 — deployment wizard UI (recommended for first-time users)
 
-Launch the local browser wizard to build correct commands for `deploy.ps1` and
-for raw `az deployment` usage:
+Launch the local browser wizard to walk through a 5-step flow and build correct
+commands for `deploy.ps1` and for raw `az deployment` usage:
 
 ```powershell
 cd infra\aks
 .\deploy-wizard.ps1
 ```
+
+Wizard preview:
+
+![AKS deployment wizard preview](wizard/wizard-preview.svg)
 
 The wizard helps with:
 
@@ -104,6 +109,7 @@ The wizard helps with:
 - Bastion + jumpbox toggles and SSH key path
 - Generating copy-paste-ready `deploy.ps1` and `az deployment sub create` commands
 - Highlighting validation warnings for incompatible combinations
+- Preventing step progression until required fields are valid
 
 ### Option C — raw `az deployment` (CI-friendly)
 
@@ -210,6 +216,38 @@ The wizard now generates overrides from explicit optional/BYO fields, so users
 do not need to handcraft a large `-Overrides` block. A manual append box still
 exists for advanced parameters not exposed in the UI.
 
+The UI is organized as a guided 5-step workflow:
+
+- Step 1: Basics (subscription, location, naming)
+- Step 2: Network and connectivity mode
+- Step 3: Optional platform features (ACR, monitoring, Bastion/jumpbox)
+- Step 4: BYO IDs and advanced overrides
+- Step 5: Generated commands and copy actions
+
+Additional UX and accessibility behaviors:
+
+- Inline field errors with invalid state indicators on required inputs
+- Next button gating based on per-step validation
+- Global Help button with an in-page option glossary for fields and checkboxes
+- Keyboard navigation for wizard chips (Left/Right/Home/End, Enter/Space)
+- Semantic step roles (`tablist`, `tab`, `tabpanel`) and live status regions
+- Session restore for form values and current step via `localStorage`
+- Copy actions show toast feedback for both PowerShell and Azure CLI command blocks
+
+Accessibility note:
+
+- The page was updated with Section 508-oriented semantic HTML and interaction patterns.
+- This repository does not include a formal VPAT or third-party certification artifact.
+
+### Troubleshooting wizard validation
+
+- `Subscription ID is required`: provide a valid Azure subscription GUID in Step 1.
+- `Location is required`: set an Azure region (for example `westus3`) in Step 1.
+- `acrName is required when acrMode=new`: in Step 3, set ACR mode to `new` and provide an ACR name.
+- `existingAcrIds is required when acrMode=existing`: in Step 3, provide one or more full ACR resource IDs.
+- `Hub subnet IDs are required`: in Step 4, when using BYO hub VNet with Bastion/jumpbox enabled, set the related BYO subnet IDs.
+- Step navigation remains disabled: check the inline error text under fields in the current step and resolve each required value.
+
 Built-in one-click presets:
 
 - `1) Minimum Cost`: managed mode, no hub, no Bastion/jumpbox, minimal add-ons.
@@ -307,6 +345,94 @@ sub + RG.
 After a successful run, `infra/aks/.deploy/outputs.json` contains the cluster
 FQDN (and private FQDN), OIDC issuer URL, kubelet client ID, node RG, and the
 exact `az aks get-credentials` command.
+
+## Connect to AKS after deployment
+
+Yes. There are basic connection hints above (`Smoke` stage and `az aks get-credentials`).
+Use the examples below for a full post-deploy workflow.
+
+### Option 1: built-in smoke stage (fastest)
+
+```powershell
+cd infra\aks
+.\deploy.ps1 -Stage Smoke
+```
+
+### Option 1b: dedicated connect helper (recommended)
+
+This helper attempts direct local cluster access first, and for private clusters
+falls back to Bastion + jumpbox if available.
+
+```powershell
+cd infra\aks
+.\connect-aks.ps1
+```
+
+Force private fallback path explicitly:
+
+```powershell
+.\connect-aks.ps1 -UsePrivatePath
+```
+
+### Option 2: manual credentials from deployment outputs
+
+```powershell
+cd infra\aks
+$out = Get-Content -Raw .\.deploy\outputs.json | ConvertFrom-Json
+$rg = $out.resourceGroupName.value
+$clusterId = $out.clusterId.value
+$aksName = ($clusterId -split '/')[8]
+
+az aks get-credentials -g $rg -n $aksName --overwrite-existing
+kubectl config current-context
+kubectl get nodes -o wide
+```
+
+Notes:
+
+- For `automaticPrivate`, run these from a network path that can reach the private API server (for example, jumpbox/Bastion path).
+- If `kubectl` returns forbidden errors, review the Azure RBAC section in this README.
+- The helper expects jumpbox key path `.deploy\jumpbox_id_rsa` by default; override with `-JumpboxSshKeyPath` if needed.
+
+## Deploy an image to the new AKS environment
+
+### Quick smoke app (public image)
+
+```powershell
+kubectl create namespace demo
+kubectl create deployment hello --image=mcr.microsoft.com/azuredocs/aks-helloworld:v1 -n demo
+kubectl expose deployment hello --port 80 --target-port 80 --type ClusterIP -n demo
+kubectl get pods,svc -n demo
+kubectl port-forward svc/hello 8080:80 -n demo
+```
+
+Then browse `http://127.0.0.1:8080`.
+
+### ACR-backed image flow (recommended)
+
+If you deployed with `acrMode=new`, an ACR was created in your environment. The cluster kubelet identity gets `AcrPull` via this template.
+
+```powershell
+cd infra\aks
+$out = Get-Content -Raw .\.deploy\outputs.json | ConvertFrom-Json
+$rg = $out.resourceGroupName.value
+$clusterId = $out.clusterId.value
+$aksName = ($clusterId -split '/')[8]
+
+$acrName = az acr list -g $rg --query "[0].name" -o tsv
+az acr import -n $acrName --source mcr.microsoft.com/azuredocs/aks-helloworld:v1 --image aks-helloworld:v1
+
+$acrLoginServer = az acr show -n $acrName --query loginServer -o tsv
+kubectl create deployment hello-acr --image "$acrLoginServer/aks-helloworld:v1" -n demo
+kubectl rollout status deployment/hello-acr -n demo
+kubectl get pods -n demo
+```
+
+Optional cleanup:
+
+```powershell
+kubectl delete namespace demo
+```
 
 ## References
 

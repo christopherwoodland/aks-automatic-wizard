@@ -166,8 +166,21 @@
       padding: 5px 10px;
       border-radius: 999px;
       background: linear-gradient(180deg, #f8fbff, #eef6ff);
-      font-size: 0.9rem;
+      font-size: 0.83rem;
       box-shadow: var(--shadow-soft);
+      min-width: 260px;
+      justify-content: flex-start;
+      text-transform: none;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+
+    .check input {
+      width: auto;
+      min-width: 0;
+      margin: 0 8px 0 2px;
+      flex: 0 0 auto;
     }
 
     .pill {
@@ -176,6 +189,8 @@
       font-size: 0.78rem;
       padding: 3px 9px;
       white-space: nowrap;
+      min-width: 132px;
+      text-align: center;
     }
 
     .ok { color: var(--ok); border-color: #8fd8a8; background: #ebfbf1; }
@@ -190,10 +205,14 @@
       color: #0d3f73;
       border-radius: 10px;
       padding: 8px 12px;
+      font-size: 0.86rem;
       font-weight: 700;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
       cursor: pointer;
       transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
       box-shadow: var(--shadow-soft);
+      min-width: 190px;
     }
 
     .preset:hover {
@@ -234,6 +253,32 @@
 
     .hint { color: var(--muted); font-size: 0.84rem; margin-top: 6px; }
 
+    .path-hint {
+      margin-top: 5px;
+      font-size: 0.77rem;
+      color: #405067;
+      background: #f5f9ff;
+      border: 1px solid #d7e6ff;
+      border-radius: 8px;
+      padding: 5px 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .path-hint code {
+      font-family: Consolas, "Lucida Console", monospace;
+      color: #213b5a;
+      font-size: 0.76rem;
+    }
+
+    .editable-token {
+      background: #fff1b8;
+      color: #6b4f00;
+      padding: 1px 3px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
     .wizard-steps {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -247,11 +292,14 @@
       color: #23496d;
       border-radius: 999px;
       padding: 8px 11px;
-      font-size: 0.8rem;
+      font-size: 0.76rem;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
       text-align: left;
       font-weight: 700;
       cursor: pointer;
       box-shadow: var(--shadow-soft);
+      min-height: 40px;
     }
 
     .step-chip.active {
@@ -532,20 +580,24 @@
       <div id="step3" class="wizard-step" data-step-index="2" role="tabpanel" aria-labelledby="stepChip3">
         <h2>Step 3: Private Network (BYO supported)</h2>
         <p class="hint">Set BYO resources for spoke and hub networking when needed.</p>
+        <p class="hint"><strong>Tip:</strong> yellow-highlighted path segments below are the parts you replace for your environment.</p>
         <div class="stack">
           <div class="stack">
             <h3>Spoke / AKS side</h3>
             <div>
               <label for="byoVnetSubnetId">BYO AKS Subnet ID</label>
               <input id="byoVnetSubnetId" placeholder="/subscriptions/.../subnets/snet-aks" />
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;aks-subnet-name&gt;</span></code></div>
             </div>
             <div>
               <label for="byoPodSubnetId">BYO Pod Subnet ID (optional)</label>
               <input id="byoPodSubnetId" placeholder="/subscriptions/.../subnets/snet-pods" />
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;pod-subnet-name&gt;</span></code></div>
             </div>
             <div>
               <label for="byoPrivateDnsZoneId">BYO Private DNS Zone ID</label>
               <input id="byoPrivateDnsZoneId" placeholder="/subscriptions/.../privateDnsZones/privatelink.<region>.azmk8s.io" />
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/privateDnsZones/privatelink.<span class="editable-token">&lt;region&gt;</span>.azmk8s.io</code></div>
             </div>
           </div>
           <div class="stack">
@@ -562,20 +614,24 @@
             <div>
               <label for="hubVnetId">BYO Hub VNet ID</label>
               <input id="hubVnetId" placeholder="/subscriptions/.../virtualNetworks/vnet-hub" />
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span></code></div>
             </div>
             <div>
               <label for="byoHubBastionSubnetId">BYO Hub Bastion Subnet ID</label>
               <input id="byoHubBastionSubnetId" placeholder="/subscriptions/.../subnets/AzureBastionSubnet" aria-describedby="byoHubBastionSubnetIdErr" />
               <div id="byoHubBastionSubnetIdErr" class="field-error" aria-live="polite"></div>
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span>/subnets/<span class="editable-token">AzureBastionSubnet</span></code></div>
             </div>
             <div>
               <label for="byoHubJumpboxSubnetId">BYO Hub Jumpbox Subnet ID</label>
               <input id="byoHubJumpboxSubnetId" placeholder="/subscriptions/.../subnets/snet-jumpbox" aria-describedby="byoHubJumpboxSubnetIdErr" />
               <div id="byoHubJumpboxSubnetIdErr" class="field-error" aria-live="polite"></div>
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;jumpbox-subnet-name&gt;</span></code></div>
             </div>
             <div>
               <label for="byoHubPeSubnetId">BYO Hub PE Subnet ID</label>
               <input id="byoHubPeSubnetId" placeholder="/subscriptions/.../subnets/snet-pe" />
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;pe-subnet-name&gt;</span></code></div>
             </div>
           </div>
         </div>

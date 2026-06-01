@@ -27,7 +27,10 @@ staged PowerShell/Bash driver.
     ├── connect-aks.ps1                # post-deploy AKS connect helper (private/public)
     ├── deploy-wizard.ps1              # launches browser-based command wizard UI
     ├── wizard/
-    │   └── index.html                 # user-friendly deployment wizard
+    │   ├── index.html                 # user-friendly deployment wizard
+    │   ├── help.html                  # wizard option help page (opens in new tab)
+    │   ├── favicon.svg                # wizard/favicon icon
+    │   └── wizard-preview.svg         # wizard preview image used in README
     └── modules/
         ├── identity.bicep             # control-plane + kubelet UAMI
         ├── network.bicep              # VNet, AKS subnet, PE subnet, NSG
@@ -63,7 +66,6 @@ The `bicepparam` reads `AZURE_ENV_NAME` / `AZURE_LOCATION` / `AKS_MODE` from
 the environment, so `azd env set` flows through cleanly.
 
 ```powershell
-cd ..\..      # repo root
 azd auth login
 azd env new aks-dev
 azd env set AZURE_LOCATION westus3
@@ -132,6 +134,7 @@ cd infra\aks
 Edit [infra/aks/main.bicepparam](infra/aks/main.bicepparam) and run:
 
 ```powershell
+cd infra\aks
 .\deploy.ps1 -SubscriptionId <sub-id> -Location westus3
 ```
 
@@ -223,8 +226,8 @@ exists for advanced parameters not exposed in the UI.
 The UI is organized as a guided 5-step workflow:
 
 - Step 1: Basics (subscription, location, naming)
-- Step 2: Network and connectivity mode
-- Step 3: Optional platform features (ACR, monitoring, Bastion/jumpbox)
+- Step 2: Optional platform features (ACR, monitoring)
+- Step 3: Private network and BYO connectivity IDs
 - Step 4: BYO IDs and advanced overrides
 - Step 5: Generated commands and copy actions
 
@@ -232,7 +235,7 @@ Additional UX and accessibility behaviors:
 
 - Inline field errors with invalid state indicators on required inputs
 - Next button gating based on per-step validation
-- Global Help button with an in-page option glossary for fields and checkboxes
+- Global Help button that opens a dedicated help page in a separate browser tab
 - Keyboard navigation for wizard chips (Left/Right/Home/End, Enter/Space)
 - Semantic step roles (`tablist`, `tab`, `tabpanel`) and live status regions
 - Session restore for form values and current step via `localStorage`
@@ -396,7 +399,7 @@ Notes:
 
 - For `automaticPrivate`, run these from a network path that can reach the private API server (for example, jumpbox/Bastion path).
 - If `kubectl` returns forbidden errors, review the Azure RBAC section in this README.
-- The helper expects jumpbox key path `infra/aks/.deploy/jumpbox_id_rsa` by default; override with `-JumpboxSshKeyPath` if needed.
+- The helper expects jumpbox key path `.deploy\jumpbox_id_rsa` by default (when running from `infra\aks`); override with `-JumpboxSshKeyPath` if needed.
 
 ## Deploy an image to the new AKS environment
 

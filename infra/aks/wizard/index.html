@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <title>AKS Optional/BYO Wizard</title>
   <style>
     :root {
-      --bg: #f5f9ff;
+      --bg: #f2f7ff;
       --paper: #ffffff;
       --ink: #0f172a;
       --muted: #475569;
@@ -14,10 +15,12 @@
       --accent: #0f6cbd;
       --accent-strong: #004578;
       --accent-soft: #e8f2ff;
+      --accent-soft-2: #dcecff;
       --ok: #0f6b3f;
       --warn: #8a5a00;
       --err: #b10e1e;
-      --shadow: 0 10px 32px rgba(15, 55, 110, 0.09);
+      --shadow: 0 14px 36px rgba(15, 55, 110, 0.11);
+      --shadow-soft: 0 8px 20px rgba(15, 55, 110, 0.08);
     }
 
     * { box-sizing: border-box; }
@@ -26,10 +29,11 @@
       color: var(--ink);
       font-family: "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       background:
-        radial-gradient(circle at 12% -10%, rgba(15, 108, 189, 0.18), transparent 34%),
-        radial-gradient(circle at 84% -16%, rgba(0, 69, 120, 0.16), transparent 38%),
-        linear-gradient(180deg, rgba(232, 242, 255, 0.65) 0%, rgba(245, 249, 255, 0) 28%),
+        radial-gradient(circle at 8% -8%, rgba(15, 108, 189, 0.22), transparent 36%),
+        radial-gradient(circle at 92% -14%, rgba(0, 69, 120, 0.2), transparent 42%),
+        linear-gradient(180deg, rgba(224, 238, 255, 0.82) 0%, rgba(242, 247, 255, 0) 32%),
         var(--bg);
+      line-height: 1.45;
     }
 
     .skip-link {
@@ -51,20 +55,22 @@
     }
 
     .container {
-      max-width: 1280px;
+      max-width: 1320px;
       margin: 0 auto;
-      padding: 24px;
+      padding: 26px;
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 18px;
+      grid-template-columns: 1fr;
+      gap: 20px;
     }
 
     .card {
       background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 14px;
       box-shadow: var(--shadow);
-      padding: 16px;
+      padding: 18px;
+      -webkit-backdrop-filter: blur(2px);
+      backdrop-filter: blur(2px);
     }
 
     .hero {
@@ -73,15 +79,17 @@
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      border-left: 5px solid var(--accent);
-      background: linear-gradient(92deg, rgba(232, 242, 255, 0.85), rgba(255, 255, 255, 0.92));
+      border-left: 6px solid var(--accent);
+      background:
+        linear-gradient(100deg, rgba(220, 236, 255, 0.9), rgba(255, 255, 255, 0.95)),
+        radial-gradient(circle at 70% -30%, rgba(15, 108, 189, 0.2), transparent 48%);
     }
 
     .hero-actions { display: flex; gap: 8px; align-items: center; }
 
     h1 {
       margin: 0;
-      font-size: 1.58rem;
+      font-size: 1.64rem;
       font-weight: 650;
       letter-spacing: 0.01em;
     }
@@ -100,15 +108,15 @@
       font-weight: 650;
     }
 
-    .sub { margin: 4px 0 0; color: var(--muted); max-width: 78ch; }
+    .sub { margin: 6px 0 0; color: var(--muted); max-width: 78ch; }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 8px;
     }
 
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .split { display: grid; grid-template-columns: 1fr; gap: 8px; }
     .stack { display: grid; gap: 8px; }
     .full { grid-column: 1 / -1; }
 
@@ -126,17 +134,18 @@
       width: 100%;
       border: 1px solid #bdd2f3;
       border-radius: 8px;
-      background: #fff;
+      background: linear-gradient(180deg, #ffffff, #fafdff);
       color: var(--ink);
       font: inherit;
-      padding: 9px 10px;
-      transition: border-color 120ms ease, box-shadow 120ms ease;
+      padding: 10px 11px;
+      transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
     }
 
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.2);
+      box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.22);
+      background: #ffffff;
     }
 
     textarea {
@@ -154,10 +163,11 @@
       align-items: center;
       gap: 6px;
       border: 1px solid #cfe0fb;
-      padding: 4px 8px;
+      padding: 5px 10px;
       border-radius: 999px;
-      background: #f8fbff;
+      background: linear-gradient(180deg, #f8fbff, #eef6ff);
       font-size: 0.9rem;
+      box-shadow: var(--shadow-soft);
     }
 
     .pill {
@@ -176,34 +186,51 @@
 
     .preset {
       border: 1px solid #b9d0f5;
-      background: #f3f8ff;
+      background: linear-gradient(180deg, #f7fbff, #eaf3ff);
       color: #0d3f73;
-      border-radius: 8px;
-      padding: 8px 10px;
+      border-radius: 10px;
+      padding: 8px 12px;
       font-weight: 700;
       cursor: pointer;
-      transition: background-color 120ms ease, border-color 120ms ease;
+      transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+      box-shadow: var(--shadow-soft);
     }
 
-    .preset:hover { background: #e8f2ff; border-color: #8fb5ee; }
+    .preset:hover {
+      background: #e8f2ff;
+      border-color: #8fb5ee;
+      transform: translateY(-1px);
+    }
+
+    .preset.active {
+      background: linear-gradient(180deg, #0f6cbd, #09599c);
+      border-color: #0f6cbd;
+      color: #ffffff;
+      box-shadow: 0 0 0 2px rgba(15, 108, 189, 0.2), 0 10px 20px rgba(9, 82, 145, 0.28);
+    }
 
     button {
       border: 1px solid transparent;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 9px 12px;
       color: #fff;
-      background: var(--accent);
+      background: linear-gradient(180deg, #0f6cbd, #09589a);
       font-weight: 700;
       cursor: pointer;
-      transition: background-color 120ms ease, border-color 120ms ease;
+      transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+      box-shadow: var(--shadow-soft);
     }
 
-    button:hover { background: #105fa4; }
-    button.alt { background: #334155; }
-    button.alt:hover { background: #253246; }
-    button.warn { background: #a4262c; }
-    button.warn:hover { background: #8e1f24; }
+    button:hover {
+      background: linear-gradient(180deg, #0f67b2, #084f8b);
+      transform: translateY(-1px);
+    }
+    button.alt { background: linear-gradient(180deg, #334155, #273447); }
+    button.alt:hover { background: linear-gradient(180deg, #2f3c4f, #222e40); }
+    button.warn { background: linear-gradient(180deg, #a4262c, #831f24); }
+    button.warn:hover { background: linear-gradient(180deg, #962228, #771c21); }
     button:disabled { opacity: 0.55; cursor: not-allowed; }
+    button:disabled:hover { transform: none; }
 
     .hint { color: var(--muted); font-size: 0.84rem; margin-top: 6px; }
 
@@ -216,24 +243,25 @@
 
     .step-chip {
       border: 1px solid #bcd3f5;
-      background: #f4f8ff;
+      background: linear-gradient(180deg, #f8fbff, #edf4ff);
       color: #23496d;
       border-radius: 999px;
-      padding: 7px 10px;
+      padding: 8px 11px;
       font-size: 0.8rem;
       text-align: left;
       font-weight: 700;
       cursor: pointer;
+      box-shadow: var(--shadow-soft);
     }
 
     .step-chip.active {
-      background: #0f6cbd;
+      background: linear-gradient(180deg, #0f6cbd, #085796);
       color: #ffffff;
       border-color: #0f6cbd;
     }
 
     .step-chip.done {
-      background: #e8f7ee;
+      background: linear-gradient(180deg, #eefbf3, #e2f5ea);
       border-color: #8fd8a8;
       color: #0f6b3f;
     }
@@ -266,10 +294,10 @@
     pre {
       margin: 0;
       border: 1px solid #c7dbfa;
-      border-radius: 8px;
-      background: #082544;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #0a2746, #081f37);
       color: #dbeaff;
-      padding: 11px;
+      padding: 12px;
       white-space: pre-wrap;
       word-break: break-word;
       max-height: 280px;
@@ -291,7 +319,33 @@
       border: 1px solid #dbe7fb;
       border-radius: 10px;
       padding: 10px;
-      background: #fbfdff;
+      background: linear-gradient(180deg, #fcfeff, #f4f9ff);
+      box-shadow: var(--shadow-soft);
+    }
+
+    button:focus-visible,
+    .preset:focus-visible,
+    .step-chip:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid #0f6cbd;
+      outline-offset: 2px;
+    }
+
+    @keyframes riseIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card {
+      animation: riseIn 260ms ease;
     }
 
     .help-group h3 {
@@ -370,7 +424,7 @@
         <p class="sub">Build deploy commands with optional resources and bring-your-own IDs where supported by this template.</p>
       </div>
       <div class="hero-actions">
-        <button type="button" class="alt" id="btnHelpToggle" aria-expanded="false" aria-controls="helpPanel">Help: Explain Options</button>
+        <button type="button" class="alt" id="btnHelpToggle">Open Help in New Tab</button>
       </div>
       <span id="status" class="pill ok" role="status" aria-live="polite" aria-atomic="true">Ready</span>
     </section>
@@ -434,9 +488,9 @@
 
         <h3>Presets</h3>
         <div class="btns">
-          <button type="button" class="preset" id="btnPresetMin">1) Minimum Cost</button>
-          <button type="button" class="preset" id="btnPresetEnt">2) Private Enterprise</button>
-          <button type="button" class="preset" id="btnPresetByo">3) BYO Everything</button>
+          <button type="button" class="preset" id="btnPresetMin" aria-pressed="false">1) Minimum Cost</button>
+          <button type="button" class="preset" id="btnPresetEnt" aria-pressed="false">2) Private Enterprise</button>
+          <button type="button" class="preset" id="btnPresetByo" aria-pressed="false">3) BYO Everything</button>
         </div>
         <p class="hint">Presets fill the form. You can still tweak any field after applying one.</p>
       </div>
@@ -478,7 +532,7 @@
       <div id="step3" class="wizard-step" data-step-index="2" role="tabpanel" aria-labelledby="stepChip3">
         <h2>Step 3: Private Network (BYO supported)</h2>
         <p class="hint">Set BYO resources for spoke and hub networking when needed.</p>
-        <div class="split">
+        <div class="stack">
           <div class="stack">
             <h3>Spoke / AKS side</h3>
             <div>
@@ -593,63 +647,6 @@
       </p>
     </section>
 
-    <section id="helpPanel" class="card help-panel hidden" aria-hidden="true" aria-labelledby="helpPanelTitle" tabindex="-1">
-      <h2 id="helpPanelTitle">Wizard Option Help</h2>
-      <p class="hint">Use this reference to understand what each option does before generating commands.</p>
-
-      <div class="help-grid">
-        <article class="help-group">
-          <h3>Step 1: Core</h3>
-          <dl class="help-list">
-            <dt>Subscription ID</dt><dd>Azure subscription where deployment runs.</dd>
-            <dt>Location</dt><dd>Region for deployment metadata and regional resources.</dd>
-            <dt>Mode</dt><dd><code>automaticManaged</code> for simpler defaults, <code>automaticPrivate</code> for private AKS patterns.</dd>
-            <dt>Stage</dt><dd>Choose how far the script runs: Preflight, Plan, Deploy, Smoke, or All.</dd>
-            <dt>Workload Name / Environment Name</dt><dd>Naming inputs used to derive resource name defaults.</dd>
-            <dt>AutoName</dt><dd>Generates names automatically to reduce manual naming work.</dd>
-            <dt>Interactive</dt><dd>Prompts for inputs during execution instead of non-interactive run.</dd>
-            <dt>Resume</dt><dd>Continues from a prior interrupted deployment state.</dd>
-            <dt>SkipWhatIf</dt><dd>Skips the <code>what-if</code> planning phase for faster deployment.</dd>
-          </dl>
-        </article>
-
-        <article class="help-group">
-          <h3>Step 2: Features and ACR</h3>
-          <dl class="help-list">
-            <dt>Container Insights (LAW)</dt><dd>Enables/creates Log Analytics workspace usage for AKS monitoring.</dd>
-            <dt>Azure Monitor Workspace</dt><dd>Enables Azure Monitor workspace integration.</dd>
-            <dt>Managed Grafana</dt><dd>Enables Azure Managed Grafana for dashboards.</dd>
-            <dt>ACR Mode: none</dt><dd>No container registry integration changes.</dd>
-            <dt>ACR Mode: new</dt><dd>Creates a new ACR; requires <code>acrName</code>.</dd>
-            <dt>ACR Mode: existing</dt><dd>Uses one or more existing ACR resource IDs.</dd>
-            <dt>Existing ACR IDs</dt><dd>One full resource ID per line when <code>ACR mode=existing</code>.</dd>
-          </dl>
-        </article>
-
-        <article class="help-group">
-          <h3>Step 3: Network and BYO</h3>
-          <dl class="help-list">
-            <dt>BYO AKS Subnet ID</dt><dd>Existing subnet for AKS nodes in private/BYO network patterns.</dd>
-            <dt>BYO Pod Subnet ID</dt><dd>Optional dedicated subnet for pods.</dd>
-            <dt>BYO Private DNS Zone ID</dt><dd>Existing private DNS zone for private API server name resolution.</dd>
-            <dt>Hub Connectivity Mode</dt><dd><code>none</code>, <code>peering</code>, <code>privateEndpoint</code>, or <code>both</code> for hub pattern selection.</dd>
-            <dt>BYO Hub VNet ID</dt><dd>Existing hub VNet to connect with spoke/AKS resources.</dd>
-            <dt>BYO Hub Bastion/Jumpbox/PE Subnet IDs</dt><dd>Specific existing subnets in hub VNet used by Bastion, jumpbox, and private endpoint.</dd>
-          </dl>
-        </article>
-
-        <article class="help-group">
-          <h3>Step 4: Access and Overrides</h3>
-          <dl class="help-list">
-            <dt>Bastion SKU</dt><dd>SKU for Azure Bastion deployment (for SSH/RDP access patterns).</dd>
-            <dt>Jumpbox SSH Key Path</dt><dd>Private key path used for jumpbox SSH-related command generation.</dd>
-            <dt>Deploy Bastion</dt><dd>Controls whether Bastion resources are deployed.</dd>
-            <dt>Deploy Jumpbox</dt><dd>Controls whether the Linux jumpbox VM is deployed.</dd>
-            <dt>Raw hashtable body (manualOverrides)</dt><dd>Advanced append-only PowerShell override entries not directly exposed in the UI.</dd>
-          </dl>
-        </article>
-      </div>
-    </section>
   </main>
 
   <div id="copyToast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -668,8 +665,15 @@
     const el = (id) => document.getElementById(id);
     const stepPanels = Array.from(document.querySelectorAll('.wizard-step'));
     const stepChips = Array.from(document.querySelectorAll('.step-chip'));
+    const presetButtons = {
+      minimumCost: el('btnPresetMin'),
+      privateEnterprise: el('btnPresetEnt'),
+      byoEverything: el('btnPresetByo')
+    };
     const totalSteps = stepPanels.length;
     let currentStep = 0;
+    let selectedPreset = '';
+    let isApplyingPreset = false;
 
     const q = (id) => {
       const n = el(id);
@@ -677,17 +681,12 @@
       return n.type === 'checkbox' ? n.checked : n.value.trim();
     };
 
-    function toggleHelp(forceOpen) {
-      const panel = el('helpPanel');
-      const btn = el('btnHelpToggle');
-      if (!panel || !btn) return;
-      const isHidden = panel.classList.contains('hidden');
-      const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : isHidden;
-      panel.classList.toggle('hidden', !shouldOpen);
-      panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
-      btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-      btn.textContent = shouldOpen ? 'Hide Help' : 'Help: Explain Options';
-      if (shouldOpen) panel.focus();
+    function openHelpTab() {
+      const popup = window.open('./help.html', '_blank', 'noopener,noreferrer');
+      if (!popup) {
+        showToast('Popup blocked. Allow popups and try again.');
+      }
+      return popup;
     }
 
     function setStatus(kind, text) {
@@ -734,6 +733,17 @@
     function clearFieldErrors() {
       ['subId', 'location', 'acrName', 'existingAcrIds', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId'].forEach((id) => {
         setFieldError(id, '');
+      });
+    }
+
+    function setActivePreset(kind) {
+      selectedPreset = kind || '';
+      Object.keys(presetButtons).forEach((key) => {
+        const btn = presetButtons[key];
+        if (!btn) return;
+        const isActive = key === selectedPreset;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
       });
     }
 
@@ -786,7 +796,7 @@
         values[id] = node.type === 'checkbox' ? node.checked : node.value;
       });
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentStep, values }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentStep, values, selectedPreset }));
       } catch (_) {
         // Storage may be unavailable (private mode/policy); keep wizard functional.
       }
@@ -812,6 +822,9 @@
         });
         if (typeof parsed.currentStep === 'number') {
           currentStep = Math.max(0, Math.min(totalSteps - 1, parsed.currentStep));
+        }
+        if (typeof parsed.selectedPreset === 'string') {
+          setActivePreset(parsed.selectedPreset);
         }
       } catch (_) {
         try {
@@ -907,6 +920,7 @@
     }
 
     function applyPreset(kind) {
+      isApplyingPreset = true;
       if (kind === 'minimumCost') {
         setVal('mode', 'automaticManaged');
         setVal('hubMode', 'none');
@@ -960,6 +974,9 @@
         setCheck('deployJumpbox', false);
         setVal('manualOverrides', '');
       }
+
+      setActivePreset(kind);
+      isApplyingPreset = false;
 
       build();
       persistState();
@@ -1131,7 +1148,7 @@
     el('btnPresetMin').addEventListener('click', () => applyPreset('minimumCost'));
     el('btnPresetEnt').addEventListener('click', () => applyPreset('privateEnterprise'));
     el('btnPresetByo').addEventListener('click', () => applyPreset('byoEverything'));
-    el('btnHelpToggle').addEventListener('click', () => toggleHelp());
+    el('btnHelpToggle').addEventListener('click', () => openHelpTab());
 
     stepChips.forEach((chip) => {
       chip.addEventListener('click', () => {
@@ -1166,17 +1183,16 @@
     FORM_FIELD_IDS.forEach((id) => {
       const n = el(id);
       if (!n) return;
+      const maybeClearPreset = () => {
+        if (!isApplyingPreset && selectedPreset) setActivePreset('');
+      };
+      n.addEventListener('input', maybeClearPreset);
       n.addEventListener('change', build);
       n.addEventListener('keyup', build);
       n.addEventListener('change', persistState);
     });
 
     document.addEventListener('keydown', (evt) => {
-      if (evt.key === 'Escape' && el('helpPanel') && !el('helpPanel').classList.contains('hidden')) {
-        toggleHelp(false);
-        return;
-      }
-
       const t = evt.target;
       if (!t) return;
       const tag = String(t.tagName || '').toLowerCase();

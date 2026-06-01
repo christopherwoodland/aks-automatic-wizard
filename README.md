@@ -58,7 +58,7 @@ You can drive the template three ways — pick whichever fits your workflow.
 
 ### Option A — `azd up` (Azure Developer CLI)
 
-The repo root [azure.yaml](../../azure.yaml) wires `azd` to `infra/aks/main.bicep`.
+The repo root [azure.yaml](azure.yaml) wires `azd` to `infra/aks/main.bicep`.
 The `bicepparam` reads `AZURE_ENV_NAME` / `AZURE_LOCATION` / `AKS_MODE` from
 the environment, so `azd env set` flows through cleanly.
 
@@ -100,7 +100,7 @@ cd infra\aks
 
 Wizard preview:
 
-![AKS deployment wizard preview](wizard/wizard-preview.svg)
+![AKS deployment wizard preview](infra/aks/wizard/wizard-preview.svg)
 
 The wizard helps with:
 
@@ -123,12 +123,13 @@ az deployment sub create \
 ### Interactive (confirm every name)
 
 ```powershell
+cd infra\aks
 .\deploy.ps1 -SubscriptionId <sub-id> -Location eastus2 -Mode automaticPrivate -WorkloadName payments -Interactive
 ```
 
 ### Bring your own everything (no prompts, file-driven)
 
-Edit [main.bicepparam](main.bicepparam) and run:
+Edit [infra/aks/main.bicepparam](infra/aks/main.bicepparam) and run:
 
 ```powershell
 .\deploy.ps1 -SubscriptionId <sub-id> -Location westus3
@@ -148,6 +149,7 @@ The driver runs four stages — each independently re-runnable:
 Run a single stage:
 
 ```powershell
+cd infra\aks
 .\deploy.ps1 -Stage Deploy
 .\deploy.ps1 -Stage Smoke
 ```
@@ -155,12 +157,14 @@ Run a single stage:
 Resume after a failure (re-uses prior deployment name + name overrides):
 
 ```powershell
+cd infra\aks
 .\deploy.ps1 -Resume
 ```
 
 Patch a single parameter without editing the file:
 
 ```powershell
+cd infra\aks
 .\deploy.ps1 -Resume -Overrides @{ enableManagedGrafana = 'true' }
 ```
 
@@ -274,7 +278,7 @@ az network bastion tunnel --name bas-aks-ca --resource-group rg-ca --target-reso
 Then in another shell:
 
 ```powershell
-ssh -i .deploy\jumpbox_id_rsa -p 50022 azureuser@127.0.0.1
+ssh -i infra/aks/.deploy/jumpbox_id_rsa -p 50022 azureuser@127.0.0.1
 ```
 
 ## Azure RBAC on cluster (kubectl authorization)
@@ -392,7 +396,7 @@ Notes:
 
 - For `automaticPrivate`, run these from a network path that can reach the private API server (for example, jumpbox/Bastion path).
 - If `kubectl` returns forbidden errors, review the Azure RBAC section in this README.
-- The helper expects jumpbox key path `.deploy\jumpbox_id_rsa` by default; override with `-JumpboxSshKeyPath` if needed.
+- The helper expects jumpbox key path `infra/aks/.deploy/jumpbox_id_rsa` by default; override with `-JumpboxSshKeyPath` if needed.
 
 ## Deploy an image to the new AKS environment
 

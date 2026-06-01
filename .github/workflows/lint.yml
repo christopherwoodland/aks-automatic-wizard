@@ -47,6 +47,25 @@ jobs:
       - name: Run shellcheck
         run: shellcheck infra/aks/deploy.sh
 
+  terraform:
+    name: Terraform validate + fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+      - name: terraform fmt check
+        run: terraform fmt -check -recursive
+        working-directory: infra/aks-tf
+      - name: terraform init
+        run: terraform init -backend=false
+        working-directory: infra/aks-tf
+      - name: terraform validate
+        run: terraform validate
+        working-directory: infra/aks-tf
+
   accessibility:
     name: Wizard accessibility (axe)
     runs-on: ubuntu-latest

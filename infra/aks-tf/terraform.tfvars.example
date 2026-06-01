@@ -1,0 +1,41 @@
+# ============================================================================
+#  terraform.tfvars.example  —  copy to terraform.tfvars and fill in values
+#  Mirrors the defaults in infra/aks/main.bicepparam for the Bicep path.
+# ============================================================================
+
+subscription_id = "00000000-0000-0000-0000-000000000000"   # <-- your subscription
+
+# ---- Mode ----
+mode     = "automaticManaged"   # or "automaticPrivate"
+location = "swedencentral"
+env_name = "aks-demo"
+
+# ---- Observability ----
+log_analytics_workspace_name = "log-aks-demo"
+azure_monitor_workspace_name = "amw-aks-demo"
+enable_managed_grafana       = false
+
+# ---- ACR ----
+acr_mode = "none"   # "none" | "new" | "existing"
+# acr_name        = "acraksdemounique"
+# acr_sku         = "Premium"
+# existing_acr_ids = ["/subscriptions/.../registries/myacr"]
+
+# ---- Private mode (ignored when mode = automaticManaged) ----
+# vnet_address_prefixes = ["10.240.0.0/16"]
+# aks_subnet_prefix     = "10.240.0.0/22"
+
+# ---- Cluster admin groups ----
+# cluster_admin_group_object_ids = ["00000000-0000-0000-0000-000000000001"]
+
+# ---- Hub / Bastion / Jumpbox (private mode only) ----
+# hub_connectivity_mode = "peering"   # "none" | "peering" | "privateEndpoint" | "both"
+# deploy_bastion        = false
+# deploy_jumpbox        = false
+# jumpbox_ssh_public_key = "ssh-rsa AAAA..."
+
+tags = {
+  workload    = "aks-demo"
+  environment = "dev"
+  owner       = "platform"
+}

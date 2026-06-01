@@ -122,6 +122,52 @@ az deployment sub create \
   --parameters infra/aks/main.bicepparam
 ```
 
+### Option D — Terraform
+
+A full Terraform equivalent lives in [`infra/aks-tf/`](infra/aks-tf/) and mirrors
+every parameter and module from the Bicep path.
+
+**Prerequisites:** Terraform ≥ 1.9, `az login` with Owner/Contributor + UAA rights.
+
+```bash
+cd infra/aks-tf
+
+# 1. Copy the example vars file and fill in at minimum subscription_id + env_name + location
+cp terraform.tfvars.example terraform.tfvars
+
+# 2. Initialise (downloads azurerm/azuread providers)
+terraform init
+
+# 3. Review the plan
+terraform plan -out aks.tfplan
+
+# 4. Deploy
+terraform apply aks.tfplan
+```
+
+After a successful apply, run:
+
+```bash
+$(terraform output -raw kube_config_command)
+kubectl get nodes -o wide
+```
+
+**Remote state (recommended for teams):** uncomment and configure the `backend "azurerm"` block
+in [`infra/aks-tf/providers.tf`](infra/aks-tf/providers.tf).
+
+The Terraform deployment supports both modes:
+
+| Variable | Value | Effect |
+|---|---|---|
+| `mode` | `automaticManaged` | AKS-managed VNet + hosted system node pools (default) |
+| `mode` | `automaticPrivate` | Custom VNet, private API server, private DNS zone |
+
+All BYO, hub connectivity, Bastion, jumpbox, ACR, and observability options from the Bicep path
+are available as Terraform variables — see [`infra/aks-tf/variables.tf`](infra/aks-tf/variables.tf).
+
+> **Note:** The wizard (Option B2) generates Bicep/`az deployment` commands only.
+> Use Option D directly when you want Terraform output.
+
 ### Interactive (confirm every name)
 
 ```powershell

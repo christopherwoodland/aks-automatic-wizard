@@ -10,7 +10,7 @@ OUTPUTS_FILE="$STATE_DIR/outputs.json"
 # Defaults
 SUBSCRIPTION_ID=""
 LOCATION="westus3"
-MODE="automaticManaged"     # or automaticPrivate
+MODE="automaticManaged"     # or automaticPrivate or standardPrivate
 WORKLOAD="aks"
 ENV="dev"
 PARAMETERS_FILE="$SCRIPT_DIR/main.bicepparam"
@@ -27,7 +27,7 @@ usage() {
 Usage: $0 [options]
   -s, --subscription <id>
   -l, --location <region>           default: westus3
-  -m, --mode <automaticManaged|automaticPrivate>
+  -m, --mode <automaticManaged|automaticPrivate|standardPrivate>
   -w, --workload <name>             default: aks
   -e, --env <name>                  default: dev
   -p, --params <file>               default: main.bicepparam

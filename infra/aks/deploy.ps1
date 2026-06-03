@@ -30,7 +30,7 @@
 param(
     [string]$SubscriptionId,
     [string]$Location = 'westus3',
-    [ValidateSet('automaticManaged','automaticPrivate')]
+    [ValidateSet('automaticManaged','automaticPrivate','standardPrivate')]
     [string]$Mode = 'automaticManaged',
     [string]$WorkloadName = 'aks',
     [string]$Environment = 'dev',
@@ -377,7 +377,7 @@ try {
     $overrides['location'] = $Location
 
     # ---- Hub connectivity overrides ----
-    if ($Mode -eq 'automaticPrivate' -and $HubConnectivityMode -ne 'none') {
+    if (($Mode -eq 'automaticPrivate' -or $Mode -eq 'standardPrivate') -and $HubConnectivityMode -ne 'none') {
         $overrides['hubConnectivityMode'] = $HubConnectivityMode
         if ($HubVnetId) {
             $overrides['byoHubVnetId'] = $HubVnetId
@@ -414,7 +414,7 @@ try {
             Write-Ok "Jumpbox SSH key: $JumpboxSshKeyPath"
         }
     } elseif ($HubConnectivityMode -ne 'none') {
-        Write-Warn2 "HubConnectivityMode='$HubConnectivityMode' ignored (only applies to -Mode automaticPrivate)."
+        Write-Warn2 "HubConnectivityMode='$HubConnectivityMode' ignored (only applies to private modes)."
     } elseif ($DeployBastion -or $DeployJumpbox) {
         throw "-DeployBastion / -DeployJumpbox require -HubConnectivityMode (peering | privateEndpoint | both)."
     }

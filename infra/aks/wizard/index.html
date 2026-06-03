@@ -505,6 +505,7 @@
             <select id="mode">
               <option value="automaticManaged">automaticManaged</option>
               <option value="automaticPrivate" selected>automaticPrivate</option>
+              <option value="standardPrivate">standardPrivate</option>
             </select>
           </div>
           <div>
@@ -539,6 +540,7 @@
           <button type="button" class="preset" id="btnPresetMin" aria-pressed="false">1) Minimum Cost</button>
           <button type="button" class="preset" id="btnPresetEnt" aria-pressed="false">2) Private Enterprise</button>
           <button type="button" class="preset" id="btnPresetByo" aria-pressed="false">3) BYO Everything</button>
+          <button type="button" class="preset" id="btnPresetStd" aria-pressed="false">4) Standard Private CNI</button>
         </div>
         <p class="hint">Presets fill the form. You can still tweak any field after applying one.</p>
       </div>
@@ -581,18 +583,42 @@
         <h2>Step 3: Private Network (BYO supported)</h2>
         <p class="hint">Set BYO resources for spoke and hub networking when needed.</p>
         <p class="hint"><strong>Tip:</strong> yellow-highlighted path segments below are the parts you replace for your environment.</p>
+
+        <div class="grid" id="standardNetworkOptions">
+          <h3>Standard Mode Options (standardPrivate only)</h3>
+          <div>
+            <label for="apiServerAccessMode">API Server Access Mode</label>
+            <select id="apiServerAccessMode">
+              <option value="vnetIntegration" selected>vnetIntegration (NIC in delegated subnet)</option>
+              <option value="privateEndpoint">privateEndpoint (traditional PE)</option>
+            </select>
+          </div>
+          <div>
+            <label for="enableOverlay">Network Mode</label>
+            <select id="enableOverlay">
+              <option value="true" selected>Overlay + Cilium (pods get virtual IPs)</option>
+              <option value="false">Flat Azure CNI (pods get VNet IPs)</option>
+            </select>
+          </div>
+        </div>
+
         <div class="stack">
           <div class="stack">
             <h3>Spoke / AKS side</h3>
             <div>
-              <label for="byoVnetSubnetId">BYO AKS Subnet ID</label>
+              <label for="byoVnetSubnetId">BYO Node Subnet ID <small>(worker node NICs)</small></label>
               <input id="byoVnetSubnetId" placeholder="/subscriptions/.../subnets/snet-aks" />
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;aks-subnet-name&gt;</span></code></div>
             </div>
             <div>
-              <label for="byoPodSubnetId">BYO Pod Subnet ID (optional)</label>
+              <label for="byoPodSubnetId">BYO Pod Subnet ID <small>(optional — dedicated pod IPs)</small></label>
               <input id="byoPodSubnetId" placeholder="/subscriptions/.../subnets/snet-pods" />
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;pod-subnet-name&gt;</span></code></div>
+            </div>
+            <div>
+              <label for="byoApiServerSubnetId">BYO API Server Subnet ID <small>(optional — /28, delegated to Microsoft.ContainerService/managedClusters)</small></label>
+              <input id="byoApiServerSubnetId" placeholder="/subscriptions/.../subnets/snet-apiserver" />
+              <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;apiserver-subnet-name&gt;</span></code></div>
             </div>
             <div>
               <label for="byoPrivateDnsZoneId">BYO Private DNS Zone ID</label>
@@ -713,7 +739,8 @@
     const FORM_FIELD_IDS = [
       'subId', 'location', 'mode', 'stage', 'workload', 'envName', 'autoName', 'interactive', 'resume', 'skipWhatIf',
       'enableLaw', 'enableAmw', 'enableGrafana', 'acrMode', 'acrName', 'existingAcrIds',
-      'byoVnetSubnetId', 'byoPodSubnetId', 'byoPrivateDnsZoneId',
+      'apiServerAccessMode', 'enableOverlay',
+      'byoVnetSubnetId', 'byoPodSubnetId', 'byoApiServerSubnetId', 'byoPrivateDnsZoneId',
       'hubMode', 'hubVnetId', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId', 'byoHubPeSubnetId',
       'deployBastion', 'deployJumpbox', 'bastionSku', 'jumpboxKeyPath', 'manualOverrides'
     ];
@@ -724,7 +751,8 @@
     const presetButtons = {
       minimumCost: el('btnPresetMin'),
       privateEnterprise: el('btnPresetEnt'),
-      byoEverything: el('btnPresetByo')
+      byoEverything: el('btnPresetByo'),
+      standardPrivate: el('btnPresetStd')
     };
     const totalSteps = stepPanels.length;
     let currentStep = 0;
@@ -1021,6 +1049,7 @@
         setVal('existingAcrIds', '/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr-byo');
         setVal('byoVnetSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-aks');
         setVal('byoPodSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-pods');
+        setVal('byoApiServerSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-apiserver');
         setVal('byoPrivateDnsZoneId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/privateDnsZones/privatelink.swedencentral.azmk8s.io');
         setVal('hubVnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub');
         setVal('byoHubBastionSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/AzureBastionSubnet');
@@ -1028,6 +1057,31 @@
         setVal('byoHubPeSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/snet-pe');
         setCheck('deployBastion', false);
         setCheck('deployJumpbox', false);
+        setVal('apiServerAccessMode', 'vnetIntegration');
+        setVal('enableOverlay', 'true');
+        setVal('manualOverrides', '');
+      }
+
+      if (kind === 'standardPrivate') {
+        setVal('mode', 'standardPrivate');
+        setVal('hubMode', 'peering');
+        setCheck('enableLaw', true);
+        setCheck('enableAmw', true);
+        setCheck('enableGrafana', false);
+        setVal('acrMode', 'none');
+        setVal('acrName', '');
+        setVal('existingAcrIds', '');
+        setVal('byoVnetSubnetId', '');
+        setVal('byoPodSubnetId', '');
+        setVal('byoPrivateDnsZoneId', '');
+        setVal('hubVnetId', '');
+        setVal('byoHubBastionSubnetId', '');
+        setVal('byoHubJumpboxSubnetId', '');
+        setVal('byoHubPeSubnetId', '');
+        setCheck('deployBastion', true);
+        setCheck('deployJumpbox', true);
+        setVal('apiServerAccessMode', 'privateEndpoint');
+        setVal('enableOverlay', 'false');
         setVal('manualOverrides', '');
       }
 
@@ -1064,7 +1118,11 @@
 
       const byoVnetSubnetId = q('byoVnetSubnetId');
       const byoPodSubnetId = q('byoPodSubnetId');
+      const byoApiServerSubnetId = q('byoApiServerSubnetId');
       const byoPrivateDnsZoneId = q('byoPrivateDnsZoneId');
+
+      const apiServerAccessMode = q('apiServerAccessMode') || 'vnetIntegration';
+      const enableOverlay = q('enableOverlay') === 'true';
 
       const hubMode = q('hubMode');
       const hubVnetId = q('hubVnetId');
@@ -1084,13 +1142,21 @@
       if (acrMode === 'new' && !acrName) issues.push('ACR mode=new requires acrName.');
       if (acrMode === 'existing' && !linesToPsArray(existingAcrIds)) issues.push('ACR mode=existing requires at least one existing ACR ID.');
 
-      if (mode !== 'automaticPrivate' && (hubMode !== 'none' || byoVnetSubnetId || byoPrivateDnsZoneId)) {
-        warns.push('Hub and private network BYO values are mainly for automaticPrivate mode.');
+      if (mode !== 'automaticPrivate' && mode !== 'standardPrivate' && (hubMode !== 'none' || byoVnetSubnetId || byoPrivateDnsZoneId)) {
+        warns.push('Hub and private network BYO values are mainly for private modes (automaticPrivate / standardPrivate).');
       }
 
       if (mode === 'automaticPrivate' && (hubMode === 'privateEndpoint' || hubMode === 'both')) {
         warns.push('AKS Automatic private uses API server VNet integration; management PE path is skipped by template guard logic.');
       }
+
+      if (mode === 'standardPrivate' && apiServerAccessMode === 'vnetIntegration' && (hubMode === 'privateEndpoint' || hubMode === 'both')) {
+        warns.push('vnetIntegration is mutually exclusive with management PE. Hub PE will be skipped.');
+      }
+
+      // Show/hide standard network options panel
+      const stdPanel = el('standardNetworkOptions');
+      if (stdPanel) stdPanel.style.display = mode === 'standardPrivate' ? '' : 'none';
 
       if (hubVnetId && deployBastion && !byoHubBastionSubnetId) {
         issues.push('BYO hub + Bastion requires byoHubBastionSubnetId.');
@@ -1103,6 +1169,12 @@
       const ov = [];
       ov.push(`mode='${single(mode)}'`);
       ov.push(`location='${single(location)}'`);
+
+      // Standard-specific overrides
+      if (mode === 'standardPrivate') {
+        ov.push(`apiServerAccessMode='${single(apiServerAccessMode)}'`);
+        ov.push(`enableOverlay=${enableOverlay ? '$true' : '$false'}`);
+      }
 
       ov.push(`logAnalyticsWorkspaceName='${enableLaw ? `log-${single(envName)}` : ''}'`);
       ov.push(`azureMonitorWorkspaceName='${enableAmw ? `amw-${single(envName)}` : ''}'`);
@@ -1118,6 +1190,7 @@
 
       if (byoVnetSubnetId) ov.push(`byoVnetSubnetId='${single(byoVnetSubnetId)}'`);
       if (byoPodSubnetId) ov.push(`byoPodSubnetId='${single(byoPodSubnetId)}'`);
+      if (byoApiServerSubnetId) ov.push(`byoApiServerSubnetId='${single(byoApiServerSubnetId)}'`);
       if (byoPrivateDnsZoneId) ov.push(`byoPrivateDnsZoneId='${single(byoPrivateDnsZoneId)}'`);
 
       ov.push(`hubConnectivityMode='${single(hubMode)}'`);
@@ -1204,6 +1277,7 @@
     el('btnPresetMin').addEventListener('click', () => applyPreset('minimumCost'));
     el('btnPresetEnt').addEventListener('click', () => applyPreset('privateEnterprise'));
     el('btnPresetByo').addEventListener('click', () => applyPreset('byoEverything'));
+    el('btnPresetStd').addEventListener('click', () => applyPreset('standardPrivate'));
     el('btnHelpToggle').addEventListener('click', () => openHelpTab());
 
     stepChips.forEach((chip) => {

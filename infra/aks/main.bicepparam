@@ -7,7 +7,11 @@ using 'main.bicep'
 var envName = readEnvironmentVariable('AZURE_ENV_NAME', 'aks-demo')
 
 // ---- Mode ----
-param mode = readEnvironmentVariable('AKS_MODE', 'automaticManaged')   // or 'automaticPrivate'
+param mode = readEnvironmentVariable('AKS_MODE', 'automaticManaged')   // or 'automaticPrivate' or 'standardPrivate'
+
+// ---- Standard mode options (ignored when mode != standardPrivate) ----
+param apiServerAccessMode = 'vnetIntegration'   // 'vnetIntegration' or 'privateEndpoint'
+param enableOverlay = true                       // true = overlay+cilium; false = flat Azure CNI
 
 // ---- Core ----
 param location = readEnvironmentVariable('AZURE_LOCATION', 'westus3')

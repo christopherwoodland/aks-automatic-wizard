@@ -153,7 +153,7 @@
           <dl class="help-list">
             <dt>Subscription ID</dt><dd>Azure subscription where deployment runs.</dd>
             <dt>Location</dt><dd>Region for deployment metadata and regional resources.</dd>
-            <dt>Mode</dt><dd><code>automaticManaged</code> for simpler defaults, <code>automaticPrivate</code> for private AKS patterns.</dd>
+            <dt>Mode</dt><dd><code>automaticManaged</code> for simpler defaults, <code>automaticPrivate</code> for private AKS Automatic, <code>standardPrivate</code> for private Standard AKS with BYO networking.</dd>
             <dt>Stage</dt><dd>Choose how far the script runs: Preflight, Plan, Deploy, Smoke, or All.</dd>
             <dt>Workload Name / Environment Name</dt><dd>Naming inputs used to derive resource name defaults.</dd>
             <dt>AutoName</dt><dd>Generates names automatically to reduce manual naming work.</dd>
@@ -179,8 +179,11 @@
         <article class="help-group">
           <h3>Step 3: Network and BYO</h3>
           <dl class="help-list">
-            <dt>BYO AKS Subnet ID</dt><dd>Existing subnet for AKS nodes in private/BYO network patterns.</dd>
-            <dt>BYO Pod Subnet ID</dt><dd>Optional dedicated subnet for pods.</dd>
+            <dt>API Server Access Mode</dt><dd><code>vnetIntegration</code> places the API server NIC in a delegated /28 subnet (no PE cost). <code>privateEndpoint</code> uses a traditional private endpoint. Only applies to <code>standardPrivate</code> mode.</dd>
+            <dt>CNI Overlay</dt><dd>When enabled, pods use overlay addresses (10.244.0.0/16) and Cilium dataplane. When disabled, pods get routable VNet IPs (flat Azure CNI). Only applies to <code>standardPrivate</code> mode.</dd>
+            <dt>BYO Node Subnet ID</dt><dd>Existing subnet where AKS worker node VM NICs are placed. Skips VNet module creation.</dd>
+            <dt>BYO Pod Subnet ID</dt><dd>Optional dedicated subnet for pod IPs (used with flat Azure CNI or dual-subnet overlay).</dd>
+            <dt>BYO API Server Subnet ID</dt><dd>Existing /28 subnet delegated to <code>Microsoft.ContainerService/managedClusters</code> for VNet integration. Required when using BYO VNet with <code>vnetIntegration</code> access mode.</dd>
             <dt>BYO Private DNS Zone ID</dt><dd>Existing private DNS zone for private API server name resolution.</dd>
             <dt>Hub Connectivity Mode</dt><dd><code>none</code>, <code>peering</code>, <code>privateEndpoint</code>, or <code>both</code> for hub pattern selection.</dd>
             <dt>BYO Hub VNet ID</dt><dd>Existing hub VNet to connect with spoke/AKS resources.</dd>

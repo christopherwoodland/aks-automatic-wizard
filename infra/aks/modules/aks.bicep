@@ -1,6 +1,7 @@
-// AKS Automatic cluster - supports two modes:
-//   automaticManaged: AKS-managed VNet + managed system node pools (hostedSystemProfile)
-//   automaticPrivate: custom VNet + private API server (NO managed system node pools - not supported)
+// AKS cluster module - supports three deployment modes:
+//   automaticManaged: AKS Automatic + AKS-managed VNet + managed system node pools (hostedSystemProfile)
+//   automaticPrivate: AKS Automatic + custom VNet + private API server (NO managed system node pools)
+//   standardPrivate:  Standard AKS + custom VNet + private API server (Azure CNI flat or overlay+cilium)
 targetScope = 'resourceGroup'
 
 // ---------- Core ----------
@@ -25,6 +26,15 @@ param nodeResourceGroupRestrictionLevel string = 'ReadOnly'
 
 @description('Kubernetes version. Leave empty for AKS-default (Automatic auto-upgrades).')
 param kubernetesVersion string = ''
+
+// ---------- SKU ----------
+@description('AKS SKU name. Automatic for AKS Automatic; Base for Standard/Free/Premium tiers.')
+@allowed([ 'Automatic', 'Base' ])
+param skuName string = 'Automatic'
+
+@description('AKS SKU tier.')
+@allowed([ 'Free', 'Standard', 'Premium' ])
+param skuTier string = 'Standard'
 
 @description('Support plan.')
 @allowed([ 'KubernetesOfficial', 'AKSLongTermSupport' ])
@@ -403,8 +413,8 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-03-02-preview' = {
   location: location
   tags: tags
   sku: {
-    name: 'Automatic'
-    tier: 'Standard'
+    name: skuName
+    tier: skuTier
   }
   identity: {
     type: 'UserAssigned'

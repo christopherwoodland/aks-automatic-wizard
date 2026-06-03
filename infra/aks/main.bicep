@@ -11,7 +11,7 @@ targetScope = 'subscription'
 
 // ---------- Mode ----------
 @description('Deployment mode.')
-@allowed([ 'automaticManaged', 'automaticPrivate' ])
+@allowed([ 'automaticManaged', 'automaticPrivate', 'standardPrivate' ])
 param mode string = 'automaticManaged'
 
 // ---------- Resource group ----------
@@ -95,6 +95,13 @@ param apiServerSubnetName string = 'snet-apiserver'
 @description('API server subnet CIDR. Must be at least /28 and delegated to Microsoft.ContainerService/managedClusters.')
 param apiServerSubnetPrefix string = '10.240.5.0/28'
 
+@description('API server access mode for the private cluster. vnetIntegration = API server gets NIC in a delegated subnet (no PE cost, lower latency). privateEndpoint = traditional private endpoint to management groupId.')
+@allowed([ 'vnetIntegration', 'privateEndpoint' ])
+param apiServerAccessMode string = 'vnetIntegration'
+
+@description('Enable overlay networking (pods get virtual IPs from podCidr). When false, flat Azure CNI is used (pods get VNet IPs). Overlay is required for Cilium dataplane.')
+param enableOverlay bool = true
+
 @description('AKS subnet NSG name.')
 param aksNsgName string = ''
 
@@ -103,6 +110,9 @@ param byoVnetSubnetId string = ''
 
 @description('Bring-your-own pod subnet resource ID (optional).')
 param byoPodSubnetId string = ''
+
+@description('Bring-your-own API server subnet resource ID (for VNet integration with BYO VNet). Must be a /28 delegated to Microsoft.ContainerService/managedClusters.')
+param byoApiServerSubnetId string = ''
 
 @description('Private DNS zone name (default: privatelink.<region>.azmk8s.io).')
 param privateDnsZoneName string = ''
@@ -336,10 +346,29 @@ param nodeOsMaintenanceWindow object = {}
 // ============================================================================
 //  Derived values
 // ============================================================================
-var isPrivate = mode == 'automaticPrivate'
-var enableHostedSystem = !isPrivate // managed system node pools require managed VNet
+var isPrivate = mode == 'automaticPrivate' || mode == 'standardPrivate'
+var isStandard = mode == 'standardPrivate'
+var enableHostedSystem = !isPrivate && !isStandard // managed system node pools require managed VNet + Automatic SKU
 var effectivePrivateDnsZoneName = empty(privateDnsZoneName) ? 'privatelink.${location}.azmk8s.io' : privateDnsZoneName
 var effectiveNsgName = empty(aksNsgName) ? 'nsg-${aksSubnetName}' : aksNsgName
+
+// SKU: Automatic for automaticManaged/automaticPrivate; Base for standardPrivate
+var effectiveSkuName = isStandard ? 'Base' : 'Automatic'
+var effectiveSkuTier = 'Standard'
+
+// Networking: Standard mode respects enableOverlay; Automatic always uses overlay+cilium
+var effectiveNetworkPluginMode = isStandard ? (enableOverlay ? 'overlay' : '') : networkPluginMode
+var effectiveNetworkDataplane = isStandard ? (enableOverlay ? 'cilium' : 'azure') : networkDataplane
+var effectiveNetworkPolicy = isStandard ? (enableOverlay ? 'cilium' : 'azure') : networkPolicy
+var effectivePodCidr = (effectiveNetworkPluginMode == 'overlay') ? podCidr : ''
+
+// API server access: vnetIntegration needs a delegated subnet; privateEndpoint does not
+// Automatic always uses vnetIntegration; Standard can choose
+var effectiveApiServerAccessMode = isStandard ? apiServerAccessMode : 'vnetIntegration'
+var needsApiServerSubnet = isPrivate && effectiveApiServerAccessMode == 'vnetIntegration' && empty(byoVnetSubnetId) && empty(byoApiServerSubnetId)
+
+// Node RG restriction: Automatic enforces ReadOnly; Standard defaults to Unrestricted
+var effectiveNodeRgRestriction = isStandard ? 'Unrestricted' : nodeResourceGroupRestrictionLevel
 
 // ============================================================================
 //  Resource group
@@ -423,6 +452,7 @@ module networkMod 'modules/network.bicep' = if (isPrivate && empty(byoVnetSubnet
     createPrivateEndpointSubnet: createPrivateEndpointSubnet
     privateEndpointSubnetName: privateEndpointSubnetName
     privateEndpointSubnetPrefix: privateEndpointSubnetPrefix
+    createApiServerSubnet: needsApiServerSubnet
     apiServerSubnetName: apiServerSubnetName
     apiServerSubnetPrefix: apiServerSubnetPrefix
     aksNsgName: effectiveNsgName
@@ -431,7 +461,7 @@ module networkMod 'modules/network.bicep' = if (isPrivate && empty(byoVnetSubnet
 }
 
 var effectiveVnetSubnetId = isPrivate ? (empty(byoVnetSubnetId) ? networkMod!.outputs.aksSubnetId : byoVnetSubnetId) : ''
-var effectiveApiServerSubnetId = (isPrivate && empty(byoVnetSubnetId)) ? networkMod!.outputs.apiServerSubnetId : ''
+var effectiveApiServerSubnetId = needsApiServerSubnet ? networkMod!.outputs.apiServerSubnetId : (isPrivate && effectiveApiServerAccessMode == 'vnetIntegration' && !empty(byoApiServerSubnetId)) ? byoApiServerSubnetId : ''
 
 // ============================================================================
 //  Private DNS (private mode, unless BYO zone supplied)
@@ -484,7 +514,7 @@ module raSubnet 'modules/roleAssignmentSubnet.bicep' = if (isPrivate) {
 }
 
 // Network Contributor on the apiserver VNet integration subnet (only when we created it).
-module raApiServerSubnet 'modules/roleAssignmentSubnet.bicep' = if (isPrivate && empty(byoVnetSubnetId)) {
+module raApiServerSubnet 'modules/roleAssignmentSubnet.bicep' = if (needsApiServerSubnet) {
   name: 'raApiServerSubnet'
   scope: rg
   dependsOn: [ networkMod ]
@@ -537,9 +567,11 @@ module aksMod 'modules/aks.bicep' = {
     dnsPrefix: dnsPrefix
     fqdnSubdomain: fqdnSubdomain
     nodeResourceGroup: nodeResourceGroupName
-    nodeResourceGroupRestrictionLevel: nodeResourceGroupRestrictionLevel
+    nodeResourceGroupRestrictionLevel: effectiveNodeRgRestriction
     kubernetesVersion: kubernetesVersion
     supportPlan: supportPlan
+    skuName: effectiveSkuName
+    skuTier: effectiveSkuTier
     tags: tags
     controlPlaneIdentityId: identityMod.outputs.controlPlaneIdentityId
     kubeletIdentityId: identityMod.outputs.kubeletIdentityId
@@ -558,10 +590,10 @@ module aksMod 'modules/aks.bicep' = {
     systemPoolOsSku: systemPoolOsSku
     systemPoolZones: systemPoolZones
     networkPlugin: networkPlugin
-    networkPluginMode: networkPluginMode
-    networkDataplane: networkDataplane
-    networkPolicy: networkPolicy
-    podCidr: podCidr
+    networkPluginMode: effectiveNetworkPluginMode
+    networkDataplane: effectiveNetworkDataplane
+    networkPolicy: effectiveNetworkPolicy
+    podCidr: effectivePodCidr
     serviceCidr: serviceCidr
     dnsServiceIp: dnsServiceIp
     // managedNATGateway only works with AKS-managed VNet. BYO subnet requires loadBalancer (or UDR/user NAT).
@@ -596,7 +628,7 @@ module aksMod 'modules/aks.bicep' = {
     enableFileCsi: enableFileCsi
     enableBlobCsi: enableBlobCsi
     enableSnapshotController: enableSnapshotController
-    autoUpgradeChannel: autoUpgradeChannel
+    autoUpgradeChannel: isStandard ? autoUpgradeChannel : 'stable'
     nodeOsUpgradeChannel: nodeOsUpgradeChannel
   }
 }
@@ -714,13 +746,12 @@ module hubPdnsLink 'modules/privateDnsLink.bicep' = if (wantHub && empty(byoPriv
 }
 
 // Private Endpoint to AKS (groupId='management') in the hub VNet.
-// NOTE: PE on the 'management' groupId is for *legacy* private clusters only.
-// AKS Automatic uses API Server VNet Integration (the API server already has a
-// private NIC in snet-apiserver), which is mutually exclusive with PE — ARM
-// returns a generic InternalServerError. Skip PE whenever VNet integration is
-// active (i.e. whenever we provisioned an apiserver subnet — same predicate
-// used to set apiServerSubnetId on the cluster).
-var apiServerVnetIntegrationActive = isPrivate && empty(byoVnetSubnetId)
+// PE on the 'management' groupId works for private clusters using the traditional
+// private endpoint model. AKS Automatic uses API Server VNet Integration (the API
+// server already has a private NIC in snet-apiserver), which is mutually exclusive
+// with PE — ARM returns InternalServerError. Skip PE whenever VNet integration is
+// active (Automatic always; Standard only when apiServerAccessMode == 'vnetIntegration').
+var apiServerVnetIntegrationActive = isPrivate && effectiveApiServerAccessMode == 'vnetIntegration'
 var wantPe = wantHub && (hubConnectivityMode == 'privateEndpoint' || hubConnectivityMode == 'both') && !apiServerVnetIntegrationActive
 module aksPe 'modules/aksPrivateEndpoint.bicep' = if (wantPe) {
   name: 'aksPe'

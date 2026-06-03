@@ -1,5 +1,5 @@
-// VNet + AKS subnet (+ optional private-endpoint subnet) + NSG.
-// Only used in the 'automaticPrivate' deployment mode (custom VNet path).
+// VNet + AKS subnet (+ optional private-endpoint subnet + optional apiserver subnet) + NSG.
+// Used in private deployment modes (automaticPrivate, standardPrivate) with custom VNet path.
 targetScope = 'resourceGroup'
 
 @description('Azure region.')
@@ -25,6 +25,9 @@ param privateEndpointSubnetName string = 'snet-pe'
 
 @description('Private-endpoint subnet CIDR.')
 param privateEndpointSubnetPrefix string = '10.240.4.0/24'
+
+@description('Create an API server VNet integration subnet (delegated). Required for vnetIntegration access mode, not needed for privateEndpoint access mode.')
+param createApiServerSubnet bool = true
 
 @description('API server VNet integration subnet name (delegated to Microsoft.ContainerService/managedClusters).')
 param apiServerSubnetName string = 'snet-apiserver'
@@ -77,13 +80,18 @@ var apiServerSubnet = {
   }
 }
 
+// Build subnets list conditionally based on which optional subnets are enabled
+var baseSubnets = [ aksSubnet ]
+var withPeSubnets = createPrivateEndpointSubnet ? union(baseSubnets, [ peSubnet ]) : baseSubnets
+var allSubnets = createApiServerSubnet ? union(withPeSubnets, [ apiServerSubnet ]) : withPeSubnets
+
 resource vnet 'Microsoft.Network/virtualNetworks@2024-01-01' = {
   name: vnetName
   location: location
   tags: tags
   properties: {
     addressSpace: { addressPrefixes: vnetAddressPrefixes }
-    subnets: createPrivateEndpointSubnet ? [ aksSubnet, peSubnet, apiServerSubnet ] : [ aksSubnet, apiServerSubnet ]
+    subnets: allSubnets
   }
 }
 
@@ -91,4 +99,4 @@ output vnetId string = vnet.id
 output vnetName string = vnet.name
 output aksSubnetId string = '${vnet.id}/subnets/${aksSubnetName}'
 output privateEndpointSubnetId string = createPrivateEndpointSubnet ? '${vnet.id}/subnets/${privateEndpointSubnetName}' : ''
-output apiServerSubnetId string = '${vnet.id}/subnets/${apiServerSubnetName}'
+output apiServerSubnetId string = createApiServerSubnet ? '${vnet.id}/subnets/${apiServerSubnetName}' : ''

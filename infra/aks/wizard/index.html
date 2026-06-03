@@ -700,6 +700,7 @@
           <button id="btnGenerate" type="button">Generate</button>
           <button type="button" class="alt" id="btnCopyPs1">Copy deploy.ps1</button>
           <button type="button" class="warn" id="btnCopyAz">Copy az command</button>
+          <button type="button" class="alt" id="btnCopyTf">Copy terraform</button>
         </div>
       </div>
 
@@ -720,8 +721,11 @@
       <h2>deploy.ps1</h2>
       <pre id="ps1Out"></pre>
 
-      <h2>Environment + az deployment</h2>
+      <h2>Direct Bicep (az deployment sub create)</h2>
       <pre id="azOut"></pre>
+
+      <h2>Direct Terraform (terraform apply)</h2>
+      <pre id="tfOut"></pre>
 
       <p class="hint">
         Private endpoint requests for AKS Automatic private mode are automatically guarded by template logic.
@@ -1018,6 +1022,7 @@
         setCheck('deployJumpbox', false);
         setVal('byoVnetSubnetId', '');
         setVal('byoPodSubnetId', '');
+        setVal('byoApiServerSubnetId', '');
         setVal('byoPrivateDnsZoneId', '');
         setVal('hubVnetId', '');
         setVal('byoHubBastionSubnetId', '');
@@ -1073,6 +1078,7 @@
         setVal('existingAcrIds', '');
         setVal('byoVnetSubnetId', '');
         setVal('byoPodSubnetId', '');
+        setVal('byoApiServerSubnetId', '');
         setVal('byoPrivateDnsZoneId', '');
         setVal('hubVnetId', '');
         setVal('byoHubBastionSubnetId', '');
@@ -1154,6 +1160,14 @@
         warns.push('vnetIntegration is mutually exclusive with management PE. Hub PE will be skipped.');
       }
 
+      // BYO VNet with vnetIntegration requires a BYO API server subnet
+      if ((mode === 'automaticPrivate' || mode === 'standardPrivate') && byoVnetSubnetId && !byoApiServerSubnetId) {
+        const needsIt = mode === 'automaticPrivate' || apiServerAccessMode === 'vnetIntegration';
+        if (needsIt) {
+          issues.push('BYO Node Subnet with VNet integration requires a BYO API Server Subnet ID (delegated /28).');
+        }
+      }
+
       // Show/hide standard network options panel
       const stdPanel = el('standardNetworkOptions');
       if (stdPanel) stdPanel.style.display = mode === 'standardPrivate' ? '' : 'none';
@@ -1226,24 +1240,91 @@
 
       const psCmd = ps.join(' `\n  ');
 
-      const azLines = [
-        `$env:AZURE_ENV_NAME='${single(envName)}'`,
-        `$env:AZURE_LOCATION='${single(location)}'`,
-        `$env:AKS_MODE='${single(mode)}'`,
-        `$env:HUB_CONNECTIVITY_MODE='${single(hubMode)}'`,
-        `$env:DEPLOY_BASTION='${deployBastion ? 'true' : 'false'}'`,
-        `$env:BASTION_SKU='${single(bastionSku)}'`,
-        `$env:DEPLOY_JUMPBOX='${deployJumpbox ? 'true' : 'false'}'`
-      ];
-      if (deployJumpbox) {
-        azLines.push(`$env:JUMPBOX_SSH_PUBLIC_KEY=(Get-Content -Raw '${single(jumpboxKeyPath)}.pub').Trim()`);
+      // ---- Direct Bicep: az deployment sub create with --parameters ----
+      const bicepParams = [];
+      bicepParams.push(`mode=${mode}`);
+      bicepParams.push(`location=${location}`);
+      bicepParams.push(`resourceGroupName=rg-${single(envName)}`);
+      bicepParams.push(`clusterName=aks-${single(envName)}`);
+      bicepParams.push(`nodeResourceGroupName=rg-${single(envName)}-nodes`);
+      bicepParams.push(`dnsPrefix=aks-${single(envName)}`);
+      bicepParams.push(`controlPlaneIdentityName=id-${single(envName)}-cp`);
+      bicepParams.push(`kubeletIdentityName=id-${single(envName)}-kubelet`);
+      if (mode === 'standardPrivate') {
+        bicepParams.push(`apiServerAccessMode=${apiServerAccessMode}`);
+        bicepParams.push(`enableOverlay=${enableOverlay}`);
       }
-      azLines.push(`az deployment sub create --location ${location} --template-file main.bicep --parameters main.bicepparam`);
-      azLines.push('# For extra non-env overrides, append: --parameters key=value');
+      if (acrMode !== 'none') bicepParams.push(`acrMode=${acrMode}`);
+      if (acrMode === 'new' && acrName) bicepParams.push(`acrName=${single(acrName)}`);
+      if (byoVnetSubnetId) bicepParams.push(`byoVnetSubnetId=${single(byoVnetSubnetId)}`);
+      if (byoPodSubnetId) bicepParams.push(`byoPodSubnetId=${single(byoPodSubnetId)}`);
+      if (byoApiServerSubnetId) bicepParams.push(`byoApiServerSubnetId=${single(byoApiServerSubnetId)}`);
+      if (byoPrivateDnsZoneId) bicepParams.push(`byoPrivateDnsZoneId=${single(byoPrivateDnsZoneId)}`);
+      bicepParams.push(`hubConnectivityMode=${hubMode}`);
+      if (hubVnetId) bicepParams.push(`byoHubVnetId=${single(hubVnetId)}`);
+      if (byoHubBastionSubnetId) bicepParams.push(`byoHubBastionSubnetId=${single(byoHubBastionSubnetId)}`);
+      if (byoHubJumpboxSubnetId) bicepParams.push(`byoHubJumpboxSubnetId=${single(byoHubJumpboxSubnetId)}`);
+      if (byoHubPeSubnetId) bicepParams.push(`byoHubPeSubnetId=${single(byoHubPeSubnetId)}`);
+      bicepParams.push(`deployBastion=${deployBastion}`);
+      bicepParams.push(`bastionSku=${bastionSku}`);
+      bicepParams.push(`deployJumpbox=${deployJumpbox}`);
+
+      const paramArgs = bicepParams.map(p => `  --parameters ${p}`).join(' `\n');
+      const azCmd = [
+        `az deployment sub create \\`,
+        `  --name "aks-${single(envName)}-\$(date +%s)" \\`,
+        `  --location ${location} \\`,
+        `  --template-file main.bicep \\`,
+        `  --parameters main.bicepparam \\`,
+        bicepParams.map(p => `  --parameters ${p}`).join(' \\\n')
+      ].join('\n');
+
+      const azCmdPs = [
+        `az deployment sub create \``,
+        `  --name "aks-${single(envName)}-$(Get-Date -Format FileDateTimeUniversal)" \``,
+        `  --location ${location} \``,
+        `  --template-file main.bicep \``,
+        `  --parameters main.bicepparam \``,
+        bicepParams.map(p => `  --parameters ${p}`).join(' `\n')
+      ].join('\n');
+
+      // ---- Direct Terraform ----
+      const tfVars = [];
+      tfVars.push(`subscription_id = "${subId || '<sub-id>'}"`);
+      tfVars.push(`mode            = "${mode}"`);
+      tfVars.push(`location        = "${location}"`);
+      tfVars.push(`env_name        = "${single(envName)}"`);
+      if (mode === 'standardPrivate') {
+        tfVars.push(`api_server_access_mode = "${apiServerAccessMode}"`);
+        tfVars.push(`enable_overlay         = ${enableOverlay}`);
+      }
+      if (acrMode !== 'none') tfVars.push(`acr_mode = "${acrMode}"`);
+      if (acrMode === 'new' && acrName) tfVars.push(`acr_name = "${single(acrName)}"`);
+      if (byoVnetSubnetId) tfVars.push(`byo_vnet_subnet_id       = "${single(byoVnetSubnetId)}"`);
+      if (byoPodSubnetId) tfVars.push(`byo_pod_subnet_id        = "${single(byoPodSubnetId)}"`);
+      if (byoApiServerSubnetId) tfVars.push(`byo_api_server_subnet_id = "${single(byoApiServerSubnetId)}"`);
+      if (byoPrivateDnsZoneId) tfVars.push(`byo_private_dns_zone_id  = "${single(byoPrivateDnsZoneId)}"`);
+      tfVars.push(`hub_connectivity_mode = "${hubMode}"`);
+      if (hubVnetId) tfVars.push(`byo_hub_vnet_id = "${single(hubVnetId)}"`);
+      tfVars.push(`deploy_bastion = ${deployBastion}`);
+      tfVars.push(`deploy_jumpbox = ${deployJumpbox}`);
+
+      const tfCmd = [
+        '# terraform.tfvars (paste into infra/aks-tf/terraform.tfvars)',
+        mode === 'standardPrivate' ? '# NOTE: standardPrivate mode requires adding api_server_access_mode, enable_overlay,\n# and byo_api_server_subnet_id variables to aks-tf/variables.tf if not yet present.' : '',
+        tfVars.join('\n'),
+        '',
+        '# Then run:',
+        'cd infra/aks-tf',
+        'terraform init',
+        'terraform plan -out=tfplan',
+        'terraform apply tfplan'
+      ].filter(Boolean).join('\n');
 
       el('overridesOut').textContent = `@{ ${overridesBody} }`;
       el('ps1Out').textContent = psCmd;
-      el('azOut').textContent = azLines.join('\n');
+      el('azOut').textContent = `# PowerShell:\n${azCmdPs}\n\n# Bash:\n${azCmd}`;
+      el('tfOut').textContent = tfCmd;
 
       const msgs = [];
       issues.forEach(x => msgs.push('ERROR: ' + x));
@@ -1274,6 +1355,7 @@
     el('btnNext').addEventListener('click', () => moveStep(1));
     el('btnCopyPs1').addEventListener('click', () => copyText('ps1Out'));
     el('btnCopyAz').addEventListener('click', () => copyText('azOut'));
+    el('btnCopyTf').addEventListener('click', () => copyText('tfOut'));
     el('btnPresetMin').addEventListener('click', () => applyPreset('minimumCost'));
     el('btnPresetEnt').addEventListener('click', () => applyPreset('privateEnterprise'));
     el('btnPresetByo').addEventListener('click', () => applyPreset('byoEverything'));

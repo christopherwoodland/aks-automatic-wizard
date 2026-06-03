@@ -51,6 +51,7 @@ param privateEndpointSubnetPrefix = '10.240.4.0/24'
 param aksNsgName = ''
 param byoVnetSubnetId = ''
 param byoPodSubnetId = ''
+param byoApiServerSubnetId = ''
 param privateDnsZoneName = ''                // default: privatelink.<region>.azmk8s.io
 param byoPrivateDnsZoneId = ''
 param privateDnsVnetLinkName = 'vnet-link'

@@ -513,7 +513,7 @@ module raSubnet 'modules/roleAssignmentSubnet.bicep' = if (isPrivate) {
   }
 }
 
-// Network Contributor on the apiserver VNet integration subnet (only when we created it).
+// Network Contributor on the apiserver VNet integration subnet (when we created it).
 module raApiServerSubnet 'modules/roleAssignmentSubnet.bicep' = if (needsApiServerSubnet) {
   name: 'raApiServerSubnet'
   scope: rg
@@ -521,6 +521,24 @@ module raApiServerSubnet 'modules/roleAssignmentSubnet.bicep' = if (needsApiServ
   params: {
     vnetName: vnetNameEffective
     subnetName: apiServerSubnetName
+    principalId: identityMod.outputs.controlPlaneIdentityPrincipalId
+    roleDefinitionId: '4d97b98b-1d4f-4787-a291-c67834d212e7'
+  }
+}
+
+// Network Contributor on BYO API server subnet (when user supplies their own).
+var byoApiServer = isPrivate && effectiveApiServerAccessMode == 'vnetIntegration' && !empty(byoApiServerSubnetId)
+var byoApiServerSubId = byoApiServer ? split(byoApiServerSubnetId, '/')[2] : subscription().subscriptionId
+var byoApiServerRgName = byoApiServer ? split(byoApiServerSubnetId, '/')[4] : resourceGroupName
+var byoApiServerVnetName = byoApiServer ? split(byoApiServerSubnetId, '/')[8] : ''
+var byoApiServerSubnetName = byoApiServer ? split(byoApiServerSubnetId, '/')[10] : ''
+
+module raByoApiServerSubnet 'modules/roleAssignmentSubnet.bicep' = if (byoApiServer) {
+  name: 'raByoApiServerSubnet'
+  scope: resourceGroup(byoApiServerSubId, byoApiServerRgName)
+  params: {
+    vnetName: byoApiServerVnetName
+    subnetName: byoApiServerSubnetName
     principalId: identityMod.outputs.controlPlaneIdentityPrincipalId
     roleDefinitionId: '4d97b98b-1d4f-4787-a291-c67834d212e7'
   }
@@ -560,7 +578,7 @@ module preAksRbac 'modules/roleAssignments.bicep' = {
 module aksMod 'modules/aks.bicep' = {
   name: 'aks'
   scope: rg
-  dependsOn: [ preAksRbac, raSubnet, raPrivateDns, raApiServerSubnet ]
+  dependsOn: [ preAksRbac, raSubnet, raPrivateDns, raApiServerSubnet, raByoApiServerSubnet ]
   params: {
     location: location
     clusterName: clusterName

@@ -73,6 +73,24 @@ ok()   { printf "  \033[32m[OK]\033[0m %s\n"   "$*"; }
 warn() { printf "  \033[33m[!!]\033[0m %s\n"   "$*"; }
 err()  { printf "  \033[31m[XX]\033[0m %s\n"   "$*"; }
 
+is_valid_subnet_resource_id() {
+  local value="${1:-}"
+  [[ -n "$value" ]] || return 1
+  [[ "$value" =~ ^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\.Network/virtualNetworks/[^/]+/subnets/[^/]+$ ]]
+}
+
+is_valid_cidr() {
+  local value="${1:-}"
+  [[ "$value" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/([0-9]{1,2})$ ]] || return 1
+
+  local o1="${BASH_REMATCH[1]}" o2="${BASH_REMATCH[2]}" o3="${BASH_REMATCH[3]}" o4="${BASH_REMATCH[4]}" p="${BASH_REMATCH[5]}"
+  for o in "$o1" "$o2" "$o3" "$o4"; do
+    (( o >= 0 && o <= 255 )) || return 1
+  done
+  (( p >= 0 && p <= 32 )) || return 1
+  return 0
+}
+
 prompt() {
   local label="$1" default="$2" v
   if ! $INTERACTIVE; then echo "$default"; return; fi
@@ -276,6 +294,12 @@ ensure_byo_node_subnet_if_missing() {
   $ENSURE_BYO_NODE_SUBNET || return 0
   local subnet_id="${OVERRIDES[byoVnetSubnetId]:-}"
   [[ -n "$subnet_id" ]] || { err "--ensure-byo-node-subnet requires --set byoVnetSubnetId=<full subnet resource id>"; exit 1; }
+  is_valid_subnet_resource_id "$subnet_id" || { err "Invalid BYO node subnet resource ID format: $subnet_id"; exit 1; }
+
+  if [[ -n "$BYO_NODE_SUBNET_PREFIX" ]] && ! is_valid_cidr "$BYO_NODE_SUBNET_PREFIX"; then
+    err "Invalid --byo-node-subnet-prefix '$BYO_NODE_SUBNET_PREFIX'. Use IPv4 CIDR format like 10.240.0.0/22."
+    exit 1
+  fi
 
   if az network vnet subnet show --ids "$subnet_id" --query id -o tsv >/dev/null 2>&1; then
     ok "BYO node subnet already exists"

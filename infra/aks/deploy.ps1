@@ -83,6 +83,32 @@ function Test-IsTruthyValue($value) {
     return $s -match '^(1|true|yes|on)$'
 }
 
+function Test-IsValidSubnetResourceId {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+    return $Value -match '^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\.Network/virtualNetworks/[^/]+/subnets/[^/]+$'
+}
+
+function Test-IsValidCidr {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+    $m = [regex]::Match($Value.Trim(), '^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})$')
+    if (-not $m.Success) { return $false }
+
+    $octets = @(
+        [int]$m.Groups[1].Value,
+        [int]$m.Groups[2].Value,
+        [int]$m.Groups[3].Value,
+        [int]$m.Groups[4].Value
+    )
+    foreach ($o in $octets) {
+        if ($o -lt 0 -or $o -gt 255) { return $false }
+    }
+
+    $prefix = [int]$m.Groups[5].Value
+    return $prefix -ge 0 -and $prefix -le 32
+}
+
 function Ensure-SubnetExists {
     [CmdletBinding()]
     param(
@@ -90,7 +116,7 @@ function Ensure-SubnetExists {
         [string]$SubnetPrefix
     )
 
-    if ($SubnetId -notmatch '/subscriptions/.+/resourceGroups/.+/providers/Microsoft.Network/virtualNetworks/.+/subnets/.+') {
+    if (-not (Test-IsValidSubnetResourceId $SubnetId)) {
         throw "Invalid subnet resource ID format: $SubnetId"
     }
 
@@ -114,6 +140,9 @@ function Ensure-SubnetExists {
 
     if ([string]::IsNullOrWhiteSpace($SubnetPrefix)) {
         throw "BYO node subnet does not exist. Provide -ByoNodeSubnetPrefix (for example 10.240.0.0/22) so it can be created."
+    }
+    if (-not (Test-IsValidCidr $SubnetPrefix)) {
+        throw "Invalid -ByoNodeSubnetPrefix '$SubnetPrefix'. Use IPv4 CIDR format like 10.240.0.0/22."
     }
 
     Write-Warn2 "BYO node subnet not found. Creating subnet '$subnetName' in vnet '$vnetName' with prefix '$SubnetPrefix'..."
@@ -502,7 +531,6 @@ try {
 
     if ($Stage -in 'All','Preflight') { $pf = Invoke-Preflight; $st | Add-Member -NotePropertyName preflight -NotePropertyValue $pf -Force; Save-DeployState $st }
     if ($Stage -in 'All','Plan')      {
-        Invoke-EnsureByoNodeSubnet -Enabled $effectiveEnsureByoNodeSubnet -ParamOverrides $overrides -SubnetPrefix $ByoNodeSubnetPrefix
         Invoke-Plan -paramOverrides $overrides
     }
     if ($Stage -in 'All','Deploy')    {

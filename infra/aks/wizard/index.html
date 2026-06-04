@@ -615,7 +615,8 @@
             <div>
               <label class="check"><input type="checkbox" id="ensureByoNodeSubnet" /> Create node subnet if missing (deploy.ps1 / deploy.sh)</label>
               <label for="byoNodeSubnetPrefix">Node Subnet CIDR (required only if missing and create-if-missing is enabled)</label>
-              <input id="byoNodeSubnetPrefix" placeholder="10.240.0.0/22" />
+              <input id="byoNodeSubnetPrefix" placeholder="10.240.0.0/22" aria-describedby="byoNodeSubnetPrefixErr" />
+              <div id="byoNodeSubnetPrefixErr" class="field-error" aria-live="polite"></div>
             </div>
             <div>
               <label class="check"><input type="checkbox" id="useByoPodSubnetId" /> Use BYO Pod Subnet ID (optional)</label>
@@ -710,6 +711,7 @@
       <div id="step5" class="wizard-step" data-step-index="4" role="tabpanel" aria-labelledby="stepChip5">
         <h2>Step 5: Review & Generate</h2>
         <p class="hint">Generate and copy commands after reviewing validation output in the panel on the right.</p>
+        <p class="hint">Create-if-missing subnet behavior is script-driven and applies to deploy.ps1/deploy.sh output. It is not automatically applied when you run the direct az or Terraform snippets.</p>
         <div class="btns">
           <button id="btnGenerate" type="button">Generate</button>
           <button type="button" class="alt" id="btnCopyPs1">Copy deploy.ps1</button>
@@ -845,6 +847,20 @@
       n.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     }
 
+    function isSubnetResourceId(value) {
+      if (!value) return false;
+      return /^\/subscriptions\/[^/]+\/resourceGroups\/[^/]+\/providers\/Microsoft\.Network\/virtualNetworks\/[^/]+\/subnets\/[^/]+$/i.test(value.trim());
+    }
+
+    function isValidCidr(value) {
+      const m = String(value || '').trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/);
+      if (!m) return false;
+      const octets = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+      if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) return false;
+      const prefix = Number(m[5]);
+      return !Number.isNaN(prefix) && prefix >= 0 && prefix <= 32;
+    }
+
     function syncOptionalNetworkUi() {
       setDisabled('byoVnetSubnetId', !q('useByoVnetSubnetId'));
       setDisabled('byoNodeSubnetPrefix', !q('ensureByoNodeSubnet'));
@@ -863,7 +879,7 @@
     }
 
     function clearFieldErrors() {
-      ['subId', 'location', 'acrName', 'existingAcrIds', 'byoVnetSubnetId', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId'].forEach((id) => {
+      ['subId', 'location', 'acrName', 'existingAcrIds', 'byoVnetSubnetId', 'byoNodeSubnetPrefix', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId'].forEach((id) => {
         setFieldError(id, '');
       });
     }
@@ -916,9 +932,17 @@
           details.issues.push('Use BYO Node Subnet is enabled, but BYO Node Subnet ID is empty.');
           details.fieldErrors.byoVnetSubnetId = 'Enter a BYO Node Subnet ID or disable this option.';
         }
+        if (useByoVnetSubnet && byoVnetSubnetId && !isSubnetResourceId(byoVnetSubnetId)) {
+          details.issues.push('BYO Node Subnet ID must be a full subnet resource ID.');
+          details.fieldErrors.byoVnetSubnetId = 'Use /subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/.../subnets/...';
+        }
 
         if (ensureByoNodeSubnet && !useByoVnetSubnet) {
           details.issues.push('Create-if-missing for node subnet requires Use BYO Node Subnet ID.');
+        }
+        if (ensureByoNodeSubnet && q('byoNodeSubnetPrefix') && !isValidCidr(q('byoNodeSubnetPrefix'))) {
+          details.issues.push('Node Subnet CIDR is not valid.');
+          details.fieldErrors.byoNodeSubnetPrefix = 'Use IPv4 CIDR format like 10.240.0.0/22.';
         }
 
         if (hubVnetId && q('deployBastion') && !q('byoHubBastionSubnetId')) {
@@ -1262,8 +1286,16 @@
         issues.push('Use BYO Node Subnet is enabled, but BYO Node Subnet ID is empty.');
         setFieldError('byoVnetSubnetId', 'Enter a BYO Node Subnet ID or disable this option.');
       }
+      if (useByoVnetSubnetId && byoVnetSubnetId && !isSubnetResourceId(byoVnetSubnetId)) {
+        issues.push('BYO Node Subnet ID must be a full subnet resource ID.');
+        setFieldError('byoVnetSubnetId', 'Use /subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/.../subnets/...');
+      }
       if (ensureByoNodeSubnet && !useByoVnetSubnetId) issues.push('Create-if-missing for node subnet requires Use BYO Node Subnet ID.');
       if (ensureByoNodeSubnet && !byoNodeSubnetPrefix) warns.push('Create-if-missing is enabled without Node Subnet CIDR. If subnet is missing, deploy script will fail and ask for CIDR.');
+      if (ensureByoNodeSubnet && byoNodeSubnetPrefix && !isValidCidr(byoNodeSubnetPrefix)) {
+        issues.push('Node Subnet CIDR is not valid.');
+        setFieldError('byoNodeSubnetPrefix', 'Use IPv4 CIDR format like 10.240.0.0/22.');
+      }
 
       if (mode !== 'automaticPrivate' && mode !== 'standardPrivate' && (hubMode !== 'none' || byoVnetSubnetId || byoPrivateDnsZoneId)) {
         warns.push('Hub and private network BYO values are mainly for private modes (automaticPrivate / standardPrivate).');

@@ -1039,6 +1039,14 @@
         setCheck('enableGrafana', true);
         setVal('acrMode', 'existing');
         setVal('existingAcrIds', '/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr-enterprise');
+        setVal('byoVnetSubnetId', '');
+        setVal('byoPodSubnetId', '');
+        setVal('byoApiServerSubnetId', '');
+        setVal('byoPrivateDnsZoneId', '');
+        setVal('hubVnetId', '');
+        setVal('byoHubBastionSubnetId', '');
+        setVal('byoHubJumpboxSubnetId', '');
+        setVal('byoHubPeSubnetId', '');
         setCheck('deployBastion', true);
         setCheck('deployJumpbox', true);
         setVal('manualOverrides', "clusterAdminGroupObjectIds=@('00000000-0000-0000-0000-000000000000')");

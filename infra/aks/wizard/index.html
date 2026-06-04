@@ -911,8 +911,6 @@
         const ensureByoNodeSubnet = q('ensureByoNodeSubnet');
         const useByoHubVnet = q('useByoHubVnetId');
         const hubVnetId = useByoHubVnet ? q('hubVnetId') : '';
-        const useByoHubBastionSubnet = q('useByoHubBastionSubnetId');
-        const useByoHubJumpboxSubnet = q('useByoHubJumpboxSubnetId');
 
         if (useByoVnetSubnet && !byoVnetSubnetId) {
           details.issues.push('Use BYO Node Subnet is enabled, but BYO Node Subnet ID is empty.');
@@ -923,11 +921,11 @@
           details.issues.push('Create-if-missing for node subnet requires Use BYO Node Subnet ID.');
         }
 
-        if (hubVnetId && q('deployBastion') && useByoHubBastionSubnet && !q('byoHubBastionSubnetId')) {
+        if (hubVnetId && q('deployBastion') && !q('byoHubBastionSubnetId')) {
           details.issues.push('BYO hub + Bastion requires byoHubBastionSubnetId.');
           details.fieldErrors.byoHubBastionSubnetId = 'Bastion subnet is required when BYO hub and Bastion are enabled.';
         }
-        if (hubVnetId && q('deployJumpbox') && useByoHubJumpboxSubnet && !q('byoHubJumpboxSubnetId')) {
+        if (hubVnetId && q('deployJumpbox') && !q('byoHubJumpboxSubnetId')) {
           details.issues.push('BYO hub + Jumpbox requires byoHubJumpboxSubnetId.');
           details.fieldErrors.byoHubJumpboxSubnetId = 'Jumpbox subnet is required when BYO hub and Jumpbox are enabled.';
         }

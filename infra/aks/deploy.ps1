@@ -125,6 +125,21 @@ function Ensure-SubnetExists {
     Write-Ok "Created BYO node subnet"
 }
 
+function Invoke-EnsureByoNodeSubnet {
+    param(
+        [bool]$Enabled,
+        [hashtable]$ParamOverrides,
+        [string]$SubnetPrefix
+    )
+
+    if (-not $Enabled) { return }
+    if (-not $ParamOverrides.ContainsKey('byoVnetSubnetId') -or [string]::IsNullOrWhiteSpace([string]$ParamOverrides['byoVnetSubnetId'])) {
+        throw "-EnsureByoNodeSubnet requires a BYO node subnet ID in -Overrides @{ byoVnetSubnetId = '<full subnet resource id>' }."
+    }
+
+    Ensure-SubnetExists -SubnetId ([string]$ParamOverrides['byoVnetSubnetId']) -SubnetPrefix $SubnetPrefix
+}
+
 function New-AutoName {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Pure name generator, no side effects')]
     [CmdletBinding()]
@@ -434,13 +449,6 @@ try {
     }
     if ($overrides.ContainsKey('byoNodeSubnetPrefix')) { $overrides.Remove('byoNodeSubnetPrefix') }
 
-    if ($effectiveEnsureByoNodeSubnet) {
-        if (-not $overrides.ContainsKey('byoVnetSubnetId') -or [string]::IsNullOrWhiteSpace([string]$overrides['byoVnetSubnetId'])) {
-            throw "-EnsureByoNodeSubnet requires a BYO node subnet ID in -Overrides @{ byoVnetSubnetId = '<full subnet resource id>' }."
-        }
-        Ensure-SubnetExists -SubnetId ([string]$overrides['byoVnetSubnetId']) -SubnetPrefix $ByoNodeSubnetPrefix
-    }
-
     # ---- Hub connectivity overrides ----
     if (($Mode -eq 'automaticPrivate' -or $Mode -eq 'standardPrivate') -and $HubConnectivityMode -ne 'none') {
         $overrides['hubConnectivityMode'] = $HubConnectivityMode
@@ -493,8 +501,16 @@ try {
     Save-DeployState $st
 
     if ($Stage -in 'All','Preflight') { $pf = Invoke-Preflight; $st | Add-Member -NotePropertyName preflight -NotePropertyValue $pf -Force; Save-DeployState $st }
-    if ($Stage -in 'All','Plan')      { Invoke-Plan -paramOverrides $overrides }
-    if ($Stage -in 'All','Deploy')    { $outs = Invoke-Deploy -paramOverrides $overrides; $st | Add-Member -NotePropertyName outputs -NotePropertyValue $outs -Force; Save-DeployState $st }
+    if ($Stage -in 'All','Plan')      {
+        Invoke-EnsureByoNodeSubnet -Enabled $effectiveEnsureByoNodeSubnet -ParamOverrides $overrides -SubnetPrefix $ByoNodeSubnetPrefix
+        Invoke-Plan -paramOverrides $overrides
+    }
+    if ($Stage -in 'All','Deploy')    {
+        Invoke-EnsureByoNodeSubnet -Enabled $effectiveEnsureByoNodeSubnet -ParamOverrides $overrides -SubnetPrefix $ByoNodeSubnetPrefix
+        $outs = Invoke-Deploy -paramOverrides $overrides
+        $st | Add-Member -NotePropertyName outputs -NotePropertyValue $outs -Force
+        Save-DeployState $st
+    }
     if ($Stage -in 'All','Smoke')     { Invoke-Smoke -outputs ($st.outputs) }
 
     Write-Section "DONE"

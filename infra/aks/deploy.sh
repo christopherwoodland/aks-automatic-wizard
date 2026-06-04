@@ -293,8 +293,13 @@ ensure_byo_node_subnet_if_missing() {
 
   warn "BYO node subnet not found. Creating subnet '$subnet' in vnet '$vnet' with prefix '$BYO_NODE_SUBNET_PREFIX'..."
   az account set --subscription "$sub" >/dev/null
-  az network vnet subnet create --resource-group "$rg" --vnet-name "$vnet" --name "$subnet" --address-prefixes "$BYO_NODE_SUBNET_PREFIX" --only-show-errors >/dev/null
+  local create_rc=0
+  az network vnet subnet create --resource-group "$rg" --vnet-name "$vnet" --name "$subnet" --address-prefixes "$BYO_NODE_SUBNET_PREFIX" --only-show-errors >/dev/null || create_rc=$?
   [[ -n "$active_sub" ]] && az account set --subscription "$active_sub" >/dev/null
+  if [[ $create_rc -ne 0 ]]; then
+    err "Failed to create BYO node subnet: $subnet_id"
+    exit $create_rc
+  fi
   ok "Created BYO node subnet"
 }
 

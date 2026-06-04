@@ -369,10 +369,10 @@ for k in "${!OVERRIDES[@]}"; do printf '%s=%s\n' "$k" "${OVERRIDES[$k]}" >> "$OV
 
 case "$STAGE" in
   Preflight) stage_preflight ;;
-  Plan)      ensure_byo_node_subnet_if_missing; stage_plan ;;
+  Plan)      stage_plan ;;
   Deploy)    ensure_byo_node_subnet_if_missing; stage_deploy ;;
   Smoke)     stage_smoke ;;
-  All)       stage_preflight; ensure_byo_node_subnet_if_missing; stage_plan; stage_deploy; stage_smoke ;;
+  All)       stage_preflight; stage_plan; ensure_byo_node_subnet_if_missing; stage_deploy; stage_smoke ;;
   *) err "unknown stage: $STAGE"; exit 1;;
 esac
 

@@ -20,6 +20,8 @@ RESUME=false
 STAGE="All"                 # Preflight | Plan | Deploy | Smoke | All
 SKIP_WHATIF=false
 DEPLOYMENT_NAME=""
+ENSURE_BYO_NODE_SUBNET=false
+BYO_NODE_SUBNET_PREFIX=""
 declare -A OVERRIDES
 
 usage() {
@@ -38,6 +40,8 @@ Usage: $0 [options]
       --skip-whatif
       --set k=v                     parameter override (repeatable)
       --deployment-name <n>
+      --ensure-byo-node-subnet
+      --byo-node-subnet-prefix <cidr>
   -h, --help
 EOF
 }
@@ -55,6 +59,8 @@ while [[ $# -gt 0 ]]; do
     --resume)          RESUME=true;          shift;;
     --stage)           STAGE="$2";           shift 2;;
     --skip-whatif)     SKIP_WHATIF=true;     shift;;
+    --ensure-byo-node-subnet) ENSURE_BYO_NODE_SUBNET=true; shift;;
+    --byo-node-subnet-prefix) BYO_NODE_SUBNET_PREFIX="$2"; shift 2;;
     --set)             k="${2%%=*}"; v="${2#*=}"; OVERRIDES["$k"]="$v"; shift 2;;
     --deployment-name) DEPLOYMENT_NAME="$2"; shift 2;;
     -h|--help)         usage; exit 0;;
@@ -266,6 +272,32 @@ stage_smoke() {
   ok "Cluster reachable"
 }
 
+ensure_byo_node_subnet_if_missing() {
+  $ENSURE_BYO_NODE_SUBNET || return 0
+  local subnet_id="${OVERRIDES[byoVnetSubnetId]:-}"
+  [[ -n "$subnet_id" ]] || { err "--ensure-byo-node-subnet requires --set byoVnetSubnetId=<full subnet resource id>"; exit 1; }
+
+  if az network vnet subnet show --ids "$subnet_id" --query id -o tsv >/dev/null 2>&1; then
+    ok "BYO node subnet already exists"
+    return 0
+  fi
+
+  [[ -n "$BYO_NODE_SUBNET_PREFIX" ]] || { err "BYO node subnet not found. Provide --byo-node-subnet-prefix (for example 10.240.0.0/22) so it can be created."; exit 1; }
+
+  local sub rg vnet subnet active_sub
+  sub="$(echo "$subnet_id" | awk -F/ '{print $3}')"
+  rg="$(echo "$subnet_id" | awk -F/ '{print $5}')"
+  vnet="$(echo "$subnet_id" | awk -F/ '{print $9}')"
+  subnet="$(echo "$subnet_id" | awk -F/ '{print $11}')"
+  active_sub="$(az account show --query id -o tsv 2>/dev/null || true)"
+
+  warn "BYO node subnet not found. Creating subnet '$subnet' in vnet '$vnet' with prefix '$BYO_NODE_SUBNET_PREFIX'..."
+  az account set --subscription "$sub" >/dev/null
+  az network vnet subnet create --resource-group "$rg" --vnet-name "$vnet" --name "$subnet" --address-prefixes "$BYO_NODE_SUBNET_PREFIX" --only-show-errors >/dev/null
+  [[ -n "$active_sub" ]] && az account set --subscription "$active_sub" >/dev/null
+  ok "Created BYO node subnet"
+}
+
 # ----------------------------------------------------------------------
 OVERRIDES_FILE="$STATE_DIR/overrides.env"
 
@@ -291,16 +323,27 @@ fi
 OVERRIDES[mode]="$MODE"
 OVERRIDES[location]="$LOCATION"
 
+if [[ -n "${OVERRIDES[ensureByoNodeSubnet]:-}" ]]; then
+  case "${OVERRIDES[ensureByoNodeSubnet],,}" in
+    true|1|yes|on) ENSURE_BYO_NODE_SUBNET=true ;;
+  esac
+  unset 'OVERRIDES[ensureByoNodeSubnet]'
+fi
+if [[ -n "${OVERRIDES[byoNodeSubnetPrefix]:-}" && -z "$BYO_NODE_SUBNET_PREFIX" ]]; then
+  BYO_NODE_SUBNET_PREFIX="${OVERRIDES[byoNodeSubnetPrefix]}"
+fi
+unset 'OVERRIDES[byoNodeSubnetPrefix]'
+
 # Persist overrides for future --resume runs
 : > "$OVERRIDES_FILE"
 for k in "${!OVERRIDES[@]}"; do printf '%s=%s\n' "$k" "${OVERRIDES[$k]}" >> "$OVERRIDES_FILE"; done
 
 case "$STAGE" in
   Preflight) stage_preflight ;;
-  Plan)      stage_plan ;;
-  Deploy)    stage_deploy ;;
+  Plan)      ensure_byo_node_subnet_if_missing; stage_plan ;;
+  Deploy)    ensure_byo_node_subnet_if_missing; stage_deploy ;;
   Smoke)     stage_smoke ;;
-  All)       stage_preflight; stage_plan; stage_deploy; stage_smoke ;;
+  All)       stage_preflight; ensure_byo_node_subnet_if_missing; stage_plan; stage_deploy; stage_smoke ;;
   *) err "unknown stage: $STAGE"; exit 1;;
 esac
 

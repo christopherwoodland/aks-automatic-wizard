@@ -43,6 +43,8 @@ param(
     [switch]$SkipWhatIf,
     [string]$DeploymentName,
     [hashtable]$Overrides = @{},
+    [switch]$EnsureByoNodeSubnet,
+    [string]$ByoNodeSubnetPrefix = '',
 
     # ---- Hub connectivity (only meaningful in private mode) ----
     [ValidateSet('none','peering','privateEndpoint','both')]
@@ -73,6 +75,54 @@ function Confirm-Or-Default($prompt, $default) {
     if (-not $Interactive) { return $default }
     $ans = Read-Host "$prompt [$default]"
     if ([string]::IsNullOrWhiteSpace($ans)) { return $default } else { return $ans }
+}
+
+function Test-IsTruthyValue($value) {
+    if ($null -eq $value) { return $false }
+    $s = [string]$value
+    return $s -match '^(1|true|yes|on)$'
+}
+
+function Ensure-SubnetExists {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$SubnetId,
+        [string]$SubnetPrefix
+    )
+
+    if ($SubnetId -notmatch '/subscriptions/.+/resourceGroups/.+/providers/Microsoft.Network/virtualNetworks/.+/subnets/.+') {
+        throw "Invalid subnet resource ID format: $SubnetId"
+    }
+
+    $parts = $SubnetId -split '/'
+    $subId = $parts[2]
+    $rgName = $parts[4]
+    $vnetName = $parts[8]
+    $subnetName = $parts[10]
+
+    Write-Host "  Ensuring BYO node subnet exists: $SubnetId"
+    $prevPref = $PSNativeCommandUseErrorActionPreference
+    try {
+        $PSNativeCommandUseErrorActionPreference = $false
+        $existing = az network vnet subnet show --ids $SubnetId --query id -o tsv 2>$null
+    } finally { $PSNativeCommandUseErrorActionPreference = $prevPref }
+
+    if ($LASTEXITCODE -eq 0 -and $existing) {
+        Write-Ok "BYO node subnet already exists"
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($SubnetPrefix)) {
+        throw "BYO node subnet does not exist. Provide -ByoNodeSubnetPrefix (for example 10.240.0.0/22) so it can be created."
+    }
+
+    Write-Warn2 "BYO node subnet not found. Creating subnet '$subnetName' in vnet '$vnetName' with prefix '$SubnetPrefix'..."
+    $activeSub = az account show --query id -o tsv 2>$null
+    az account set --subscription $subId | Out-Null
+    az network vnet subnet create --resource-group $rgName --vnet-name $vnetName --name $subnetName --address-prefixes $SubnetPrefix --only-show-errors | Out-Null
+    if ($activeSub) { az account set --subscription $activeSub | Out-Null }
+    if ($LASTEXITCODE -ne 0) { throw "Failed to create BYO node subnet: $SubnetId" }
+    Write-Ok "Created BYO node subnet"
 }
 
 function New-AutoName {
@@ -375,6 +425,21 @@ try {
     foreach ($k in @($Overrides.Keys)) { $overrides[$k] = $Overrides[$k] }
     $overrides['mode'] = $Mode
     $overrides['location'] = $Location
+
+    $ensureByoFromOverrides = $overrides.ContainsKey('ensureByoNodeSubnet') -and (Test-IsTruthyValue $overrides['ensureByoNodeSubnet'])
+    $effectiveEnsureByoNodeSubnet = $EnsureByoNodeSubnet -or $ensureByoFromOverrides
+    if ($overrides.ContainsKey('ensureByoNodeSubnet')) { $overrides.Remove('ensureByoNodeSubnet') }
+    if ($overrides.ContainsKey('byoNodeSubnetPrefix') -and [string]::IsNullOrWhiteSpace($ByoNodeSubnetPrefix)) {
+        $ByoNodeSubnetPrefix = [string]$overrides['byoNodeSubnetPrefix']
+    }
+    if ($overrides.ContainsKey('byoNodeSubnetPrefix')) { $overrides.Remove('byoNodeSubnetPrefix') }
+
+    if ($effectiveEnsureByoNodeSubnet) {
+        if (-not $overrides.ContainsKey('byoVnetSubnetId') -or [string]::IsNullOrWhiteSpace([string]$overrides['byoVnetSubnetId'])) {
+            throw "-EnsureByoNodeSubnet requires a BYO node subnet ID in -Overrides @{ byoVnetSubnetId = '<full subnet resource id>' }."
+        }
+        Ensure-SubnetExists -SubnetId ([string]$overrides['byoVnetSubnetId']) -SubnetPrefix $ByoNodeSubnetPrefix
+    }
 
     # ---- Hub connectivity overrides ----
     if (($Mode -eq 'automaticPrivate' -or $Mode -eq 'standardPrivate') -and $HubConnectivityMode -ne 'none') {

@@ -189,9 +189,14 @@
             <dt>API Server Access Mode</dt><dd><code>vnetIntegration</code> places the API server NIC in a delegated /28 subnet (no management PE path). <code>privateEndpoint</code> uses a traditional private endpoint path. This selector is shown only in <code>standardPrivate</code> mode.</dd>
             <dt>Network Mode</dt><dd><code>Overlay + Cilium</code> gives pods virtual IPs; <code>Flat Azure CNI</code> gives pods routable VNet IPs. This selector is shown only in <code>standardPrivate</code> mode.</dd>
             <dt>BYO Node Subnet ID</dt><dd>Existing subnet where AKS worker node VM NICs are placed. Skips VNet module creation.</dd>
+            <dt>Use BYO checkboxes</dt><dd>Network BYO fields are opt-in. If a checkbox is off, that BYO override is omitted and template defaults are used.</dd>
+            <dt>Create node subnet if missing</dt><dd>When enabled, generated <code>deploy.ps1</code>/<code>deploy.sh</code> commands can check whether the BYO node subnet exists and create it if missing.</dd>
+            <dt>Node Subnet CIDR</dt><dd>Address range used only when create-if-missing is enabled and the BYO node subnet does not already exist (example: <code>10.240.0.0/22</code>).</dd>
             <dt>BYO Pod Subnet ID</dt><dd>Optional dedicated subnet for pod IPs (used with flat Azure CNI or dual-subnet overlay).</dd>
+            <dt>If BYO Pod Subnet ID is left blank</dt><dd>No <code>byoPodSubnetId</code> override is passed. Deployment falls back to template defaults for the selected mode/network configuration instead of forcing a dedicated BYO pod subnet.</dd>
             <dt>BYO API Server Subnet ID</dt><dd>Existing /28 subnet delegated to <code>Microsoft.ContainerService/managedClusters</code> for VNet integration.</dd>
             <dt>BYO Private DNS Zone ID</dt><dd>Existing private DNS zone for private API server name resolution.</dd>
+            <dt>If other BYO IDs are left blank</dt><dd>Blank BYO fields are simply omitted from overrides. The deployment then uses built-in template behavior for creating or selecting resources based on your mode and other provided values.</dd>
             <dt>Hub Connectivity Mode</dt><dd>Controls how the AKS/spoke side is connected to the hub side.</dd>
             <dt><code>none</code></dt><dd>No hub connectivity resources are configured. Use for standalone or lowest-cost setups with no hub access path.</dd>
             <dt><code>peering</code></dt><dd>Uses VNet peering between spoke and hub. This is the default private-enterprise pattern when you want full routed connectivity between networks.</dd>
@@ -200,6 +205,7 @@
             <dt>BYO Hub VNet ID</dt><dd>Existing hub VNet to connect with spoke/AKS resources.</dd>
             <dt>BYO Hub Bastion/Jumpbox/PE Subnet IDs</dt><dd>Specific existing subnets in hub VNet used by Bastion, jumpbox, and private endpoint.</dd>
             <dt>Validation</dt><dd>If BYO node subnet is set for private modes and VNet integration applies, BYO API server subnet is required. BYO hub + Bastion/Jumpbox deployment also requires matching hub subnet IDs.</dd>
+            <dt>Deploy path note</dt><dd>Create-if-missing subnet behavior is implemented in script flows (<code>deploy.ps1</code> and <code>deploy.sh</code>). Direct <code>az deployment</code> and Terraform snippets do not auto-create missing BYO subnets.</dd>
           </dl>
         </article>
 

@@ -606,21 +606,31 @@
           <div class="stack">
             <h3>Spoke / AKS side</h3>
             <div>
+              <label class="check"><input type="checkbox" id="useByoVnetSubnetId" /> Use existing BYO Node Subnet ID</label>
               <label for="byoVnetSubnetId">BYO Node Subnet ID <small>(worker node NICs)</small></label>
-              <input id="byoVnetSubnetId" placeholder="/subscriptions/.../subnets/snet-aks" />
+              <input id="byoVnetSubnetId" placeholder="/subscriptions/.../subnets/snet-aks" aria-describedby="byoVnetSubnetIdErr" />
+              <div id="byoVnetSubnetIdErr" class="field-error" aria-live="polite"></div>
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;aks-subnet-name&gt;</span></code></div>
             </div>
             <div>
+              <label class="check"><input type="checkbox" id="ensureByoNodeSubnet" /> Create node subnet if missing (deploy.ps1 / deploy.sh)</label>
+              <label for="byoNodeSubnetPrefix">Node Subnet CIDR (required only if missing and create-if-missing is enabled)</label>
+              <input id="byoNodeSubnetPrefix" placeholder="10.240.0.0/22" />
+            </div>
+            <div>
+              <label class="check"><input type="checkbox" id="useByoPodSubnetId" /> Use BYO Pod Subnet ID (optional)</label>
               <label for="byoPodSubnetId">BYO Pod Subnet ID <small>(optional — dedicated pod IPs)</small></label>
               <input id="byoPodSubnetId" placeholder="/subscriptions/.../subnets/snet-pods" />
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;pod-subnet-name&gt;</span></code></div>
             </div>
             <div>
+              <label class="check"><input type="checkbox" id="useByoApiServerSubnetId" /> Use BYO API Server Subnet ID</label>
               <label for="byoApiServerSubnetId">BYO API Server Subnet ID <small>(optional — /28, delegated to Microsoft.ContainerService/managedClusters)</small></label>
               <input id="byoApiServerSubnetId" placeholder="/subscriptions/.../subnets/snet-apiserver" />
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;apiserver-subnet-name&gt;</span></code></div>
             </div>
             <div>
+              <label class="check"><input type="checkbox" id="useByoPrivateDnsZoneId" /> Use BYO Private DNS Zone ID</label>
               <label for="byoPrivateDnsZoneId">BYO Private DNS Zone ID</label>
               <input id="byoPrivateDnsZoneId" placeholder="/subscriptions/.../privateDnsZones/privatelink.<region>.azmk8s.io" />
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/privateDnsZones/privatelink.<span class="editable-token">&lt;region&gt;</span>.azmk8s.io</code></div>
@@ -638,23 +648,27 @@
               </select>
             </div>
             <div>
+              <label class="check"><input type="checkbox" id="useByoHubVnetId" /> Use BYO Hub VNet ID</label>
               <label for="hubVnetId">BYO Hub VNet ID</label>
               <input id="hubVnetId" placeholder="/subscriptions/.../virtualNetworks/vnet-hub" />
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span></code></div>
             </div>
             <div>
+              <label class="check"><input type="checkbox" id="useByoHubBastionSubnetId" /> Use BYO Hub Bastion Subnet ID</label>
               <label for="byoHubBastionSubnetId">BYO Hub Bastion Subnet ID</label>
               <input id="byoHubBastionSubnetId" placeholder="/subscriptions/.../subnets/AzureBastionSubnet" aria-describedby="byoHubBastionSubnetIdErr" />
               <div id="byoHubBastionSubnetIdErr" class="field-error" aria-live="polite"></div>
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span>/subnets/<span class="editable-token">AzureBastionSubnet</span></code></div>
             </div>
             <div>
+              <label class="check"><input type="checkbox" id="useByoHubJumpboxSubnetId" /> Use BYO Hub Jumpbox Subnet ID</label>
               <label for="byoHubJumpboxSubnetId">BYO Hub Jumpbox Subnet ID</label>
               <input id="byoHubJumpboxSubnetId" placeholder="/subscriptions/.../subnets/snet-jumpbox" aria-describedby="byoHubJumpboxSubnetIdErr" />
               <div id="byoHubJumpboxSubnetIdErr" class="field-error" aria-live="polite"></div>
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;jumpbox-subnet-name&gt;</span></code></div>
             </div>
             <div>
+              <label class="check"><input type="checkbox" id="useByoHubPeSubnetId" /> Use BYO Hub PE Subnet ID</label>
               <label for="byoHubPeSubnetId">BYO Hub PE Subnet ID</label>
               <input id="byoHubPeSubnetId" placeholder="/subscriptions/.../subnets/snet-pe" />
               <div class="path-hint"><code>/subscriptions/<span class="editable-token">&lt;sub-id&gt;</span>/resourceGroups/<span class="editable-token">&lt;rg-name&gt;</span>/providers/Microsoft.Network/virtualNetworks/<span class="editable-token">&lt;hub-vnet-name&gt;</span>/subnets/<span class="editable-token">&lt;pe-subnet-name&gt;</span></code></div>
@@ -744,8 +758,14 @@
       'subId', 'location', 'mode', 'stage', 'workload', 'envName', 'autoName', 'interactive', 'resume', 'skipWhatIf',
       'enableLaw', 'enableAmw', 'enableGrafana', 'acrMode', 'acrName', 'existingAcrIds',
       'apiServerAccessMode', 'enableOverlay',
-      'byoVnetSubnetId', 'byoPodSubnetId', 'byoApiServerSubnetId', 'byoPrivateDnsZoneId',
-      'hubMode', 'hubVnetId', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId', 'byoHubPeSubnetId',
+      'useByoVnetSubnetId', 'ensureByoNodeSubnet', 'byoVnetSubnetId', 'byoNodeSubnetPrefix',
+      'useByoPodSubnetId', 'byoPodSubnetId',
+      'useByoApiServerSubnetId', 'byoApiServerSubnetId',
+      'useByoPrivateDnsZoneId', 'byoPrivateDnsZoneId',
+      'hubMode', 'useByoHubVnetId', 'hubVnetId',
+      'useByoHubBastionSubnetId', 'byoHubBastionSubnetId',
+      'useByoHubJumpboxSubnetId', 'byoHubJumpboxSubnetId',
+      'useByoHubPeSubnetId', 'byoHubPeSubnetId',
       'deployBastion', 'deployJumpbox', 'bastionSku', 'jumpboxKeyPath', 'manualOverrides'
     ];
 
@@ -818,8 +838,32 @@
       input.setAttribute('aria-invalid', hasError ? 'true' : 'false');
     }
 
+    function setDisabled(id, disabled) {
+      const n = el(id);
+      if (!n) return;
+      n.disabled = disabled;
+      n.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    }
+
+    function syncOptionalNetworkUi() {
+      setDisabled('byoVnetSubnetId', !q('useByoVnetSubnetId'));
+      setDisabled('byoNodeSubnetPrefix', !q('ensureByoNodeSubnet'));
+      setDisabled('byoPodSubnetId', !q('useByoPodSubnetId'));
+      setDisabled('byoApiServerSubnetId', !q('useByoApiServerSubnetId'));
+      setDisabled('byoPrivateDnsZoneId', !q('useByoPrivateDnsZoneId'));
+      setDisabled('hubVnetId', !q('useByoHubVnetId'));
+      setDisabled('byoHubBastionSubnetId', !q('useByoHubBastionSubnetId'));
+      setDisabled('byoHubJumpboxSubnetId', !q('useByoHubJumpboxSubnetId'));
+      setDisabled('byoHubPeSubnetId', !q('useByoHubPeSubnetId'));
+
+      if (q('ensureByoNodeSubnet') && !q('useByoVnetSubnetId')) {
+        setCheck('useByoVnetSubnetId', true);
+        setDisabled('byoVnetSubnetId', false);
+      }
+    }
+
     function clearFieldErrors() {
-      ['subId', 'location', 'acrName', 'existingAcrIds', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId'].forEach((id) => {
+      ['subId', 'location', 'acrName', 'existingAcrIds', 'byoVnetSubnetId', 'byoHubBastionSubnetId', 'byoHubJumpboxSubnetId'].forEach((id) => {
         setFieldError(id, '');
       });
     }
@@ -862,12 +906,28 @@
       }
 
       if (index === 2) {
-        const hubVnetId = q('hubVnetId');
-        if (hubVnetId && q('deployBastion') && !q('byoHubBastionSubnetId')) {
+        const useByoVnetSubnet = q('useByoVnetSubnetId');
+        const byoVnetSubnetId = useByoVnetSubnet ? q('byoVnetSubnetId') : '';
+        const ensureByoNodeSubnet = q('ensureByoNodeSubnet');
+        const useByoHubVnet = q('useByoHubVnetId');
+        const hubVnetId = useByoHubVnet ? q('hubVnetId') : '';
+        const useByoHubBastionSubnet = q('useByoHubBastionSubnetId');
+        const useByoHubJumpboxSubnet = q('useByoHubJumpboxSubnetId');
+
+        if (useByoVnetSubnet && !byoVnetSubnetId) {
+          details.issues.push('Use BYO Node Subnet is enabled, but BYO Node Subnet ID is empty.');
+          details.fieldErrors.byoVnetSubnetId = 'Enter a BYO Node Subnet ID or disable this option.';
+        }
+
+        if (ensureByoNodeSubnet && !useByoVnetSubnet) {
+          details.issues.push('Create-if-missing for node subnet requires Use BYO Node Subnet ID.');
+        }
+
+        if (hubVnetId && q('deployBastion') && useByoHubBastionSubnet && !q('byoHubBastionSubnetId')) {
           details.issues.push('BYO hub + Bastion requires byoHubBastionSubnetId.');
           details.fieldErrors.byoHubBastionSubnetId = 'Bastion subnet is required when BYO hub and Bastion are enabled.';
         }
-        if (hubVnetId && q('deployJumpbox') && !q('byoHubJumpboxSubnetId')) {
+        if (hubVnetId && q('deployJumpbox') && useByoHubJumpboxSubnet && !q('byoHubJumpboxSubnetId')) {
           details.issues.push('BYO hub + Jumpbox requires byoHubJumpboxSubnetId.');
           details.fieldErrors.byoHubJumpboxSubnetId = 'Jumpbox subnet is required when BYO hub and Jumpbox are enabled.';
         }
@@ -1020,13 +1080,23 @@
         setVal('existingAcrIds', '');
         setCheck('deployBastion', false);
         setCheck('deployJumpbox', false);
+        setCheck('useByoVnetSubnetId', false);
+        setCheck('ensureByoNodeSubnet', false);
         setVal('byoVnetSubnetId', '');
+        setVal('byoNodeSubnetPrefix', '');
+        setCheck('useByoPodSubnetId', false);
         setVal('byoPodSubnetId', '');
+        setCheck('useByoApiServerSubnetId', false);
         setVal('byoApiServerSubnetId', '');
+        setCheck('useByoPrivateDnsZoneId', false);
         setVal('byoPrivateDnsZoneId', '');
+        setCheck('useByoHubVnetId', false);
         setVal('hubVnetId', '');
+        setCheck('useByoHubBastionSubnetId', false);
         setVal('byoHubBastionSubnetId', '');
+        setCheck('useByoHubJumpboxSubnetId', false);
         setVal('byoHubJumpboxSubnetId', '');
+        setCheck('useByoHubPeSubnetId', false);
         setVal('byoHubPeSubnetId', '');
         setVal('manualOverrides', '');
       }
@@ -1039,13 +1109,23 @@
         setCheck('enableGrafana', true);
         setVal('acrMode', 'existing');
         setVal('existingAcrIds', '/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr-enterprise');
+        setCheck('useByoVnetSubnetId', false);
+        setCheck('ensureByoNodeSubnet', false);
         setVal('byoVnetSubnetId', '');
+        setVal('byoNodeSubnetPrefix', '');
+        setCheck('useByoPodSubnetId', false);
         setVal('byoPodSubnetId', '');
+        setCheck('useByoApiServerSubnetId', false);
         setVal('byoApiServerSubnetId', '');
+        setCheck('useByoPrivateDnsZoneId', false);
         setVal('byoPrivateDnsZoneId', '');
+        setCheck('useByoHubVnetId', false);
         setVal('hubVnetId', '');
+        setCheck('useByoHubBastionSubnetId', false);
         setVal('byoHubBastionSubnetId', '');
+        setCheck('useByoHubJumpboxSubnetId', false);
         setVal('byoHubJumpboxSubnetId', '');
+        setCheck('useByoHubPeSubnetId', false);
         setVal('byoHubPeSubnetId', '');
         setCheck('deployBastion', true);
         setCheck('deployJumpbox', true);
@@ -1060,13 +1140,23 @@
         setCheck('enableGrafana', false);
         setVal('acrMode', 'existing');
         setVal('existingAcrIds', '/subscriptions/.../resourceGroups/.../providers/Microsoft.ContainerRegistry/registries/acr-byo');
+        setCheck('useByoVnetSubnetId', true);
+        setCheck('ensureByoNodeSubnet', false);
         setVal('byoVnetSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-aks');
+        setVal('byoNodeSubnetPrefix', '');
+        setCheck('useByoPodSubnetId', true);
         setVal('byoPodSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-pods');
+        setCheck('useByoApiServerSubnetId', true);
         setVal('byoApiServerSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke/subnets/snet-apiserver');
+        setCheck('useByoPrivateDnsZoneId', true);
         setVal('byoPrivateDnsZoneId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/privateDnsZones/privatelink.swedencentral.azmk8s.io');
+        setCheck('useByoHubVnetId', true);
         setVal('hubVnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub');
+        setCheck('useByoHubBastionSubnetId', true);
         setVal('byoHubBastionSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/AzureBastionSubnet');
+        setCheck('useByoHubJumpboxSubnetId', true);
         setVal('byoHubJumpboxSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/snet-jumpbox');
+        setCheck('useByoHubPeSubnetId', true);
         setVal('byoHubPeSubnetId', '/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/snet-pe');
         setCheck('deployBastion', false);
         setCheck('deployJumpbox', false);
@@ -1084,13 +1174,23 @@
         setVal('acrMode', 'none');
         setVal('acrName', '');
         setVal('existingAcrIds', '');
+        setCheck('useByoVnetSubnetId', false);
+        setCheck('ensureByoNodeSubnet', false);
         setVal('byoVnetSubnetId', '');
+        setVal('byoNodeSubnetPrefix', '');
+        setCheck('useByoPodSubnetId', false);
         setVal('byoPodSubnetId', '');
+        setCheck('useByoApiServerSubnetId', false);
         setVal('byoApiServerSubnetId', '');
+        setCheck('useByoPrivateDnsZoneId', false);
         setVal('byoPrivateDnsZoneId', '');
+        setCheck('useByoHubVnetId', false);
         setVal('hubVnetId', '');
+        setCheck('useByoHubBastionSubnetId', false);
         setVal('byoHubBastionSubnetId', '');
+        setCheck('useByoHubJumpboxSubnetId', false);
         setVal('byoHubJumpboxSubnetId', '');
+        setCheck('useByoHubPeSubnetId', false);
         setVal('byoHubPeSubnetId', '');
         setCheck('deployBastion', true);
         setCheck('deployJumpbox', true);
@@ -1111,6 +1211,8 @@
       const issues = [];
       const warns = [];
 
+      syncOptionalNetworkUi();
+
       const subId = q('subId');
       const location = q('location') || 'swedencentral';
       const mode = q('mode');
@@ -1130,19 +1232,22 @@
       const acrName = q('acrName');
       const existingAcrIds = q('existingAcrIds');
 
-      const byoVnetSubnetId = q('byoVnetSubnetId');
-      const byoPodSubnetId = q('byoPodSubnetId');
-      const byoApiServerSubnetId = q('byoApiServerSubnetId');
-      const byoPrivateDnsZoneId = q('byoPrivateDnsZoneId');
+      const useByoVnetSubnetId = q('useByoVnetSubnetId');
+      const ensureByoNodeSubnet = q('ensureByoNodeSubnet');
+      const byoVnetSubnetId = useByoVnetSubnetId ? q('byoVnetSubnetId') : '';
+      const byoNodeSubnetPrefix = ensureByoNodeSubnet ? q('byoNodeSubnetPrefix') : '';
+      const byoPodSubnetId = q('useByoPodSubnetId') ? q('byoPodSubnetId') : '';
+      const byoApiServerSubnetId = q('useByoApiServerSubnetId') ? q('byoApiServerSubnetId') : '';
+      const byoPrivateDnsZoneId = q('useByoPrivateDnsZoneId') ? q('byoPrivateDnsZoneId') : '';
 
       const apiServerAccessMode = q('apiServerAccessMode') || 'vnetIntegration';
       const enableOverlay = q('enableOverlay') === 'true';
 
       const hubMode = q('hubMode');
-      const hubVnetId = q('hubVnetId');
-      const byoHubBastionSubnetId = q('byoHubBastionSubnetId');
-      const byoHubJumpboxSubnetId = q('byoHubJumpboxSubnetId');
-      const byoHubPeSubnetId = q('byoHubPeSubnetId');
+      const hubVnetId = q('useByoHubVnetId') ? q('hubVnetId') : '';
+      const byoHubBastionSubnetId = q('useByoHubBastionSubnetId') ? q('byoHubBastionSubnetId') : '';
+      const byoHubJumpboxSubnetId = q('useByoHubJumpboxSubnetId') ? q('byoHubJumpboxSubnetId') : '';
+      const byoHubPeSubnetId = q('useByoHubPeSubnetId') ? q('byoHubPeSubnetId') : '';
 
       const deployBastion = q('deployBastion');
       const deployJumpbox = q('deployJumpbox');
@@ -1155,6 +1260,12 @@
       if (!location) issues.push('Location is required.');
       if (acrMode === 'new' && !acrName) issues.push('ACR mode=new requires acrName.');
       if (acrMode === 'existing' && !linesToPsArray(existingAcrIds)) issues.push('ACR mode=existing requires at least one existing ACR ID.');
+      if (useByoVnetSubnetId && !byoVnetSubnetId) {
+        issues.push('Use BYO Node Subnet is enabled, but BYO Node Subnet ID is empty.');
+        setFieldError('byoVnetSubnetId', 'Enter a BYO Node Subnet ID or disable this option.');
+      }
+      if (ensureByoNodeSubnet && !useByoVnetSubnetId) issues.push('Create-if-missing for node subnet requires Use BYO Node Subnet ID.');
+      if (ensureByoNodeSubnet && !byoNodeSubnetPrefix) warns.push('Create-if-missing is enabled without Node Subnet CIDR. If subnet is missing, deploy script will fail and ask for CIDR.');
 
       if (mode !== 'automaticPrivate' && mode !== 'standardPrivate' && (hubMode !== 'none' || byoVnetSubnetId || byoPrivateDnsZoneId)) {
         warns.push('Hub and private network BYO values are mainly for private modes (automaticPrivate / standardPrivate).');
@@ -1182,10 +1293,12 @@
 
       if (hubVnetId && deployBastion && !byoHubBastionSubnetId) {
         issues.push('BYO hub + Bastion requires byoHubBastionSubnetId.');
+        setFieldError('byoHubBastionSubnetId', 'Enable and fill BYO Hub Bastion Subnet ID, or disable Deploy Bastion.');
       }
 
       if (hubVnetId && deployJumpbox && !byoHubJumpboxSubnetId) {
         issues.push('BYO hub + Jumpbox requires byoHubJumpboxSubnetId.');
+        setFieldError('byoHubJumpboxSubnetId', 'Enable and fill BYO Hub Jumpbox Subnet ID, or disable Deploy Jumpbox.');
       }
 
       const ov = [];
@@ -1243,6 +1356,8 @@
       if (interactive) ps.push('-Interactive');
       if (resume) ps.push('-Resume');
       if (skipWhatIf) ps.push('-SkipWhatIf');
+      if (ensureByoNodeSubnet) ps.push('-EnsureByoNodeSubnet');
+      if (ensureByoNodeSubnet && byoNodeSubnetPrefix) ps.push(`-ByoNodeSubnetPrefix ${byoNodeSubnetPrefix}`);
       if (deployJumpbox) ps.push(`-JumpboxSshKeyPath "${jumpboxKeyPath}"`);
       ps.push(`-Overrides @{ ${overridesBody} }`);
 
@@ -1309,6 +1424,7 @@
       if (acrMode !== 'none') tfVars.push(`acr_mode = "${acrMode}"`);
       if (acrMode === 'new' && acrName) tfVars.push(`acr_name = "${single(acrName)}"`);
       if (byoVnetSubnetId) tfVars.push(`byo_vnet_subnet_id       = "${single(byoVnetSubnetId)}"`);
+      if (ensureByoNodeSubnet) tfVars.push(`# create-if-missing subnet is script-driven in deploy.ps1/deploy.sh; add Terraform resources if you need this behavior in Terraform flow`);
       if (byoPodSubnetId) tfVars.push(`byo_pod_subnet_id        = "${single(byoPodSubnetId)}"`);
       if (byoApiServerSubnetId) tfVars.push(`byo_api_server_subnet_id = "${single(byoApiServerSubnetId)}"`);
       if (byoPrivateDnsZoneId) tfVars.push(`byo_private_dns_zone_id  = "${single(byoPrivateDnsZoneId)}"`);
